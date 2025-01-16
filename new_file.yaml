@@ -1,0 +1,80 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pytorch
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+
+      initContainers:
+      - name: volume-permissions
+        image: busybox
+        command: ["sh", "-c", "chown -R 1000:1000 /app/runs && chmod -R 777 /app/runs"]
+        volumeMounts:
+        - name: output-storage
+          mountPath: /app/runs
+        securityContext:
+          runAsUser: 0
+
+      # NEW INIT CONTAINER for /app/models
+      - name: model-volume-permissions
+        image: busybox
+        command: ["sh", "-c", "chown -R 1000:1000 /app/models && chmod -R 777 /app/models"]
+        volumeMounts:
+        - name: models-storage
+          mountPath: /app/models
+        securityContext:
+          runAsUser: 0
+
+      containers:
+      - name: pytorch-container
+        imagePullPolicy: Always
+        image: levgiorg/your_ml_model:latest
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            nvidia.com/mig-3g.20gb: "1"
+          limits:
+            memory: "64Gi"
+            cpu: "8"
+            nvidia.com/mig-3g.20gb: "1"
+
+        volumeMounts:
+        - name: shared-memory
+          mountPath: /dev/shm
+        - name: output-storage
+          mountPath: /app/runs
+        - name: matplotlib-config
+          mountPath: /app/matplotlib-config
+
+        # This is where you mount the "models-storage"
+        - name: models-storage
+          mountPath: /app/models/ddpg
+
+        env:
+        - name: LD_LIBRARY_PATH
+          value: "/usr/local/cuda/lib64:/usr/local/cuda/extras/CUPTI/lib64:/usr/lib/x86_64-linux-gnu/"
+        - name: MPLCONFIGDIR
+          value: "/app/matplotlib-config"
+
+      volumes:
+      - name: shared-memory
+        emptyDir:
+          medium: Memory
+      - name: output-storage
+        hostPath:
+          path: /home/paralikasilias/Giorgos/ml-outputs
+          type: DirectoryOrCreate
+      - name: matplotlib-config
+        emptyDir: {}
+      - name: models-storage
+        hostPath:
+          path: /home/paralikasilias/Giorgos/ml-models
+          type: DirectoryOrCreate

@@ -1,0 +1,83 @@
+{
+    "general": {
+        "time_step_size": 3600,
+        "num_hours": 168,
+        "num_time_steps": 168,
+        "device": "cpu",
+        "save_interval": 50
+    },
+    "rl_agent": {
+        "num_episodes": 50,
+        "epsilon": 1,
+        "epsilon_decay": 0.997,
+        "learning_rate": 1e-06,
+        "gamma": 0.99,
+        "tau": 0.001,
+        "target_update": 10,
+        "batch_size": 32,
+        "memory_size": 838320,
+        "momentum": 0.95,
+        "eps_dec": 0.996,
+        "eps_end": 0.1,
+        "learning_rate_actor": 1e-06,
+        "learning_rate_critic": 1e-05
+    },
+    "actor": {
+        "fc1_dims": 400,
+        "fc2_dims": 300
+    },
+    "critic": {
+        "fc1_dims": 400,
+        "fc2_dims": 300,
+        "fc3_dims": 300
+    },
+    "environment": {
+        "num_houses": 3,
+        "comfort_penalty": 5,
+        "c_max": 3,
+        "d_max": 3,
+        "n_c": 0.95,
+        "n_d": 0.95,
+        "t_min": 19.5,
+        "t_max": 22.5,
+        "epsilon": 0.7,
+        "eta_hvac": 1,
+        "e_max": 200,
+        "initial_inside_temperature": 21.0,
+        "battery_capacity_min": 0.6,
+        "battery_capacity_max": 10.0,
+        "action_dim_per_house": 2,
+        "state_dim_per_house": 9,
+        "hvac_action_bounds": {
+            "min": 0,
+            "max": 2000
+        },
+        "battery_action_bounds": {
+            "min": -500,
+            "max": 500
+        }
+    },
+    "cost_model": {
+        "price_penalty": 100,
+        "delta": 0.9,
+        "depreciation_coeff": 1
+    },
+    "reward": {
+        "beta": 1.6
+    },
+    "lstm_model": {
+        "input_size": 1,
+        "hidden_size": 50,
+        "output_size": 1,
+        "num_layers": 4,
+        "dropout": 0.2
+    },
+    "simulation": {
+        "num_hours": 24,
+        "random_seed": 42
+    },
+    "paths": {
+        "weather_data": "data/ninja_weather_55.6838_12.5354_uncorrected.csv",
+        "price_data": "data/2014_DK2_spot_prices.csv"
+    }
+}

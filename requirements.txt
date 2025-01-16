@@ -1,0 +1,8 @@
+# Specify the Python version using a comment or manage it via Dockerfile
+# python==3.12.0
+
+torch==2.4.0
+numpy==1.26.0
+matplotlib==3.8.0
+pandas==2.1.1
+scikit-learn==1.3.1
