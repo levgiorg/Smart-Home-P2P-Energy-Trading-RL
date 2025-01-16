@@ -23,10 +23,10 @@ class DDPGAgent:
 
         # Store dimensions from environment
         self.state_dim = state_dim
-        self.action_dim = action_dim
-        self.action_bounds = action_bounds
+        self.action_dim = action_dim  # Now includes selling price action
+        self.action_bounds = action_bounds  # Now includes selling price bounds
 
-        # Initialize networks with dimensions from environment
+        # Initialize networks with updated dimensions
         self.actor = Actor(self.state_dim, self.action_dim, config).to(self.device)
         self.target_actor = Actor(self.state_dim, self.action_dim, config).to(self.device)
         self.critic = Critic(self.state_dim, self.action_dim, config).to(self.device)
@@ -46,7 +46,11 @@ class DDPGAgent:
         # Initialize memory and utilities
         self.memory = ReplayMemory(self.memory_size)
         self.normalizer = Normalizer(self.state_dim, self.device)
-        self.noise = OUNoise(self.action_dim)
+        
+        # Initialize noise for action exploration (only for e_t and a_batt)
+        # Since we have 3 actions per house now, but only want noise on first 2
+        num_houses = self.action_dim // 3
+        self.noise = OUNoise(num_houses * 2)  # Only for e_t and a_batt actions
 
         # Initialize target networks
         self.hard_update(self.target_actor, self.actor)
@@ -64,16 +68,26 @@ class DDPGAgent:
             action = self.actor(state).cpu()  # Shape: [batch_size, n_actions]
         self.actor.train()
         
-        # Ensure action has correct shape [num_houses, 2]
-        num_houses = self.action_dim // 2  # Since each house has 2 actions
+        # Ensure action has correct shape [num_houses, 3] (e_t, a_batt, selling_price)
+        num_houses = self.action_dim // 3  # Since each house now has 3 actions
         if action.dim() == 1:  # If action is [action_dim]
-            action = action.view(num_houses, 2)
+            action = action.view(num_houses, 3)
         elif action.dim() == 2 and action.shape[0] == 1:  # If action is [1, action_dim]
-            action = action.view(num_houses, 2)
+            action = action.view(num_houses, 3)
             
         if add_noise:
-            noise = torch.tensor(self.noise.sample(), dtype=torch.float32).view(num_houses, 2)
-            action += noise
+            # Generate noise only for e_t and a_batt actions
+            noise = self.noise.sample()
+            
+            # Reshape noise to match the first two actions of each house
+            noise_reshaped = torch.tensor(noise, dtype=torch.float32).view(num_houses, 2)
+            
+            # Add noise only to e_t and a_batt
+            action[:, :2] += noise_reshaped
+            
+            # Ensure selling price stays within bounds [0, 1]
+            action[:, 2].clamp_(0, 1)
+            
         return action
 
 

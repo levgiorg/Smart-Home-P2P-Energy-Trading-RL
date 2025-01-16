@@ -15,13 +15,12 @@ class Actor(nn.Module):
         n_actions (int): Number of actions.
         device (torch.device): Device to run the model on.
     """
-
     def __init__(self, input_dims, n_actions, config: Config):
         super(Actor, self).__init__()
-        self.input_dims = input_dims
+        self.input_dims = input_dims  # Should be 36 (12 per house × 3 houses)
         self.fc1_dims = config.get('actor', 'fc1_dims')
         self.fc2_dims = config.get('actor', 'fc2_dims')
-        self.n_actions = n_actions
+        self.n_actions = n_actions  # Should be 9 (3 per house × 3 houses)
         device = config.get('general', 'device') or 'cpu'
         self.device = torch.device(device)
 

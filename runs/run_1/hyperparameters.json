@@ -46,16 +46,12 @@
         "initial_inside_temperature": 21.0,
         "battery_capacity_min": 0.6,
         "battery_capacity_max": 10.0,
-        "action_dim_per_house": 2,
-        "state_dim_per_house": 9,
-        "hvac_action_bounds": {
-            "min": 0,
-            "max": 2000
-        },
-        "battery_action_bounds": {
-            "min": -500,
-            "max": 500
-        }
+        "action_dim_per_house": 3,
+        "state_dim_per_house": 12,
+        "hvac_action_bounds": [-1, 1],
+        "battery_action_bounds": [-1, 1],
+        "selling_price_bounds": [0, 1],
+        "grid_fee": 0.05
     },
     "cost_model": {
         "price_penalty": 100,
