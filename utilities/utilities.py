@@ -1,6 +1,8 @@
 import torch
-from hyperparameters import Config
 import numbers
+
+from hyperparameters import Config
+
 
 class Utilities:
     def __init__(self, num_houses, centralized=False):

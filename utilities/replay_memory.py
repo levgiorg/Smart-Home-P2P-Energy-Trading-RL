@@ -1,4 +1,5 @@
 import random
+
 from .transition import Transition
 
 

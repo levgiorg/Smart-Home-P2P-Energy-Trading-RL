@@ -7,7 +7,7 @@
         "save_interval": 50
     },
     "rl_agent": {
-        "num_episodes": 50,
+        "num_episodes": 5000,
         "epsilon": 1,
         "epsilon_decay": 0.997,
         "learning_rate": 1e-06,
