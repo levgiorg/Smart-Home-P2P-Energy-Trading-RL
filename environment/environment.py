@@ -40,7 +40,7 @@ class Environment:
         self.ACTION_BOUNDS = {
             'e_t': config.get('environment', 'hvac_action_bounds'),
             'a_batt': config.get('environment', 'battery_action_bounds'),
-            'selling_price': [0, 1]  # Normalized selling price, will be scaled to grid price
+            'selling_price': [0.5, 0.95]  
         }
         # Initialize temperatures and batteries
         self.inside_temperatures = [self.initial_inside_temperature for _ in range(self.num_houses)]
