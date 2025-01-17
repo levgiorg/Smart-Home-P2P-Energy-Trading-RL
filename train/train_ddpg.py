@@ -51,10 +51,10 @@ def train_ddpg(config_path='hyperparameters.json', model_name='ddpg_'):
     penalty_per_house = np.zeros(num_houses)
     trading_profit_per_house = np.zeros(num_houses)  
     energy_bought_p2p_per_house = np.zeros(num_houses)
-    selling_prices_per_house = np.zeros(num_houses)  # Added this line
+    selling_prices_per_house = np.zeros(num_houses)  
         
     # 7. Training loop
-    for episode in tqdm(range(num_episodes), desc="Training DDPG"):
+    for episode in range(num_episodes):
         # Reset environment and get initial state
         state = env.reset()
         episode_reward = 0.0
@@ -67,7 +67,9 @@ def train_ddpg(config_path='hyperparameters.json', model_name='ddpg_'):
         penalty_per_house.fill(0)
         trading_profit_per_house.fill(0)
         energy_bought_p2p_per_house.fill(0)
-        selling_prices_per_house.fill(0)  # Added this line
+        selling_prices_per_house.fill(0)  
+
+        print(f"Episode {episode + 1}/{num_episodes}")
 
         while not done:
             # Convert current state to tensor
@@ -139,7 +141,7 @@ def train_ddpg(config_path='hyperparameters.json', model_name='ddpg_'):
                 'trading_metrics': {
                     'trading_profit': trading_profit_per_house.tolist(),
                     'energy_bought_p2p': energy_bought_p2p_per_house.tolist(),
-                    'selling_prices': selling_prices_per_house.tolist()  # Added this line
+                    'selling_prices': selling_prices_per_house.tolist()  
                 }
             }, model_path)
             
@@ -158,7 +160,7 @@ def train_ddpg(config_path='hyperparameters.json', model_name='ddpg_'):
         'trading_metrics': {
             'trading_profit': trading_profit_per_house.tolist(),
             'energy_bought_p2p': energy_bought_p2p_per_house.tolist(),
-            'selling_prices': selling_prices_per_house.tolist()  # Added this line
+            'selling_prices': selling_prices_per_house.tolist()  
         }
     }, final_model_path)
 
