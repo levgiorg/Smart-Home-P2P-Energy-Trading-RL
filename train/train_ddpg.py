@@ -128,7 +128,11 @@ def train_ddpg(config_path='hyperparameters.json', model_name='ddpg_'):
         )
 
         # Save model periodically
-        save_interval = config.get('general', 'save_interval')
+        if num_episodes < 1000:
+            save_interval = 100
+        else:
+            save_interval = num_episodes // 10
+
         if (episode + 1) % save_interval == 0:
             model_path = os.path.join(models_dir, f'model_checkpoint_{episode + 1}.pt')
             torch.save({

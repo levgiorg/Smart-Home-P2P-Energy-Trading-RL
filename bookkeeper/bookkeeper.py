@@ -223,12 +223,12 @@ class BookKeeper:
 
     def plot_selling_prices(self, plot_average_only=False):
         """
-        Plot selling prices for each house with moving averages and grid price comparison.
+        Plot selling prices for each house with moving averages and grid price as a line.
         
         Args:
             plot_average_only (bool): If True, only plot averages for each house
         """
-        if not self.metrics['selling_prices']:
+        if not self.metrics['selling_prices'] or not self.metrics['grid_prices']:
             return
             
         plt.figure(figsize=(12, 8))
@@ -236,12 +236,40 @@ class BookKeeper:
         num_houses = len(data_per_house)
         color_map = cm.get_cmap('tab10', num_houses)
         
-        # Plot grid price if available
-        if 'grid_prices' in self.metrics and self.metrics['grid_prices']:
+        # Plot grid prices as a line
+        if self.metrics['grid_prices']:
             grid_prices = np.array(self.metrics['grid_prices'])
-            avg_grid_price = np.mean(grid_prices)
-            plt.axhline(y=avg_grid_price, color='red', linestyle=':', 
-                       label=f'Avg Grid Price ({avg_grid_price:.3f})', linewidth=2)
+            if plot_average_only:
+                # Calculate cumulative average for grid prices
+                grid_avg = np.cumsum(grid_prices) / np.arange(1, len(grid_prices) + 1)
+                plt.plot(
+                    range(1, len(grid_prices) + 1),
+                    grid_avg,
+                    label='Grid Price Average',
+                    color='red',
+                    linestyle='-',
+                    linewidth=2
+                )
+            else:
+                # Plot raw grid prices and their moving average
+                window_size = 10
+                plt.plot(
+                    range(1, len(grid_prices) + 1),
+                    grid_prices,
+                    label='Grid Price',
+                    color='red',
+                    alpha=0.5,
+                    linewidth=1
+                )
+                # Add moving average for grid prices
+                grid_ma = np.convolve(grid_prices, np.ones(window_size)/window_size, mode='valid')
+                plt.plot(
+                    range(window_size, len(grid_prices) + 1),
+                    grid_ma,
+                    label='Grid Price MA',
+                    color='red',
+                    linewidth=2
+                )
         
         # Plot data for each house
         for house_idx in range(num_houses):
