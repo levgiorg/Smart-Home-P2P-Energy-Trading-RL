@@ -1,6 +1,5 @@
 import torch
 import numpy as np
-from tqdm import tqdm
 import os
 
 from agents import DDPGAgent
