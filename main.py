@@ -9,8 +9,8 @@ from train import train_ddpg
 
 def run_experiments():
     """
-    Comprehensive hyperparameter testing for the smart grid system.
-    Tests multiple parameter combinations that could affect system performance.
+    Enhanced hyperparameter testing with optimized parameters for 10 houses
+    while maintaining original directory structure.
     """
     config = Config()
     original_config = json.loads(json.dumps(Config.config))
@@ -19,82 +19,103 @@ def run_experiments():
         return Config()
 
     experiments = {
-        'reward_beta': [1.0, 1.2, 1.4, 1.6, 1.8, 2.0],  # More granular testing of reward scaling
+        'reward_beta': [1.0, 1.2, 1.4],  # Focus on lower betas which showed better results
         
-        'grid_fee': [0.02, 0.03, 0.04, 0.05, 0.06],  # Finer granularity for P2P costs
+        'grid_fee': [0.02, 0.025, 0.03],  # Lower fees to encourage P2P trading
         
         'learning_params': [
             # (actor_lr, critic_lr, batch_size, memory_size)
-            (1e-5, 1e-4, 32, 838320),
-            (1e-6, 1e-5, 64, 838320),
-            (1e-4, 1e-3, 128, 838320),
-            (1e-5, 1e-4, 256, 1000000)
+            (1e-4, 1e-3, 128, 1000000),  # Faster learning
+            (5e-5, 5e-4, 256, 1000000),  # More stable
+            (2e-4, 2e-3, 512, 1200000)   # Large batch for 10 houses
         ],
         
         'network_architecture': [
             # (fc1_dims, fc2_dims, fc3_dims)
-            (400, 300, 300),
-            (512, 512, 512),
-            (256, 256, 256),
-            (600, 400, 400)
+            (512, 512, 512),    # Larger network for 10 houses
+            (1024, 512, 512),   # Even larger first layer
+            (768, 384, 384)     # Balanced larger network
         ],
         
         'comfort_bounds': [
             # (t_min, t_max, comfort_penalty)
-            (19.5, 22.5, 5),
-            (19.0, 23.0, 4),
-            (20.0, 22.0, 6),
-            (19.0, 24.0, 3)
+            (19.5, 22.5, 3),    # Lower penalty
+            (19.0, 23.0, 4),    # Wider range
+            (20.0, 22.0, 5)     # Stricter but higher penalty
         ],
         
         'battery_params': [
             # (capacity_min, capacity_max, n_c, n_d)
-            (0.6, 150.0, 0.95, 0.95),
-            (1.0, 200.0, 0.90, 0.90),
-            (2.0, 250.0, 0.98, 0.98),
-            (1.5, 300.0, 0.93, 0.93)
+            (1.5, 200.0, 0.97, 0.97),  # High efficiency
+            (2.0, 250.0, 0.98, 0.98),  # Maximum efficiency
+            (1.0, 225.0, 0.96, 0.96)   # Balanced approach
         ],
         
         'rl_params': [
             # (gamma, tau, epsilon_decay, eps_end)
-            (0.99, 0.001, 0.997, 0.1),
-            (0.95, 0.005, 0.999, 0.05),
-            (0.98, 0.002, 0.998, 0.08),
-            (0.97, 0.003, 0.996, 0.15)
+            (0.99, 0.001, 0.998, 0.05),  # Slower exploration decay
+            (0.98, 0.002, 0.999, 0.08),  # Even slower decay
+            (0.97, 0.003, 0.997, 0.1)    # Faster decay
         ],
         
         'hvac_params': [
             # (eta_hvac, epsilon, e_max)
-            (1.0, 0.7, 200),
-            (0.9, 0.8, 250),
-            (1.1, 0.6, 300),
-            (0.95, 0.75, 180)
+            (1.0, 0.75, 250),    # Balanced efficiency
+            (1.1, 0.8, 300),     # High efficiency
+            (0.95, 0.7, 225)     # Conservative approach
         ],
         
         'price_params': [
             # (price_penalty, depreciation_coeff)
-            (100, 1.0),
-            (80, 0.8),
-            (120, 1.2),
-            (90, 0.9)
+            (90, 0.95),          # Moderate penalty
+            (100, 1.0),          # Standard values
+            (80, 0.9)            # Lower penalty
+        ],
+        
+        'combined_params': [
+            # (beta, grid_fee, actor_lr, critic_lr, batch_size, n_c, n_d)
+            (1.0, 0.02, 1e-4, 1e-3, 256, 0.97, 0.97),  # Optimized for trading
+            (1.2, 0.025, 5e-5, 5e-4, 512, 0.98, 0.98), # Balanced approach
+            (1.1, 0.03, 2e-4, 2e-3, 384, 0.96, 0.96)   # Fast learning
         ]
     }
 
     # Run experiments for each parameter combination
+    # First set number of houses
+    config = reset_config()
+    config.set('environment', 'num_houses', 10)
+    
+    # Run combined parameters first as they're most promising
+    for beta, fee, actor_lr, critic_lr, batch_size, n_c, n_d in experiments['combined_params']:
+        config = reset_config()
+        config.set('environment', 'num_houses', 10)
+        config.set('reward', 'beta', beta)
+        config.set('environment', 'grid_fee', fee)
+        config.set('rl_agent', 'learning_rate_actor', actor_lr)
+        config.set('rl_agent', 'learning_rate_critic', critic_lr)
+        config.set('rl_agent', 'batch_size', batch_size)
+        config.set('environment', 'n_c', n_c)
+        config.set('environment', 'n_d', n_d)
+        print(f"\nRunning combined experiment with beta={beta}, fee={fee}, actor_lr={actor_lr}")
+        main()
+
     for beta in experiments['reward_beta']:
         config = reset_config()
+        config.set('environment', 'num_houses', 10)
         config.set('reward', 'beta', beta)
         print(f"\nRunning experiment with reward beta = {beta}")
         main()
 
     for fee in experiments['grid_fee']:
         config = reset_config()
+        config.set('environment', 'num_houses', 10)
         config.set('environment', 'grid_fee', fee)
         print(f"\nRunning experiment with grid fee = {fee}")
         main()
 
     for actor_lr, critic_lr, batch_size, memory_size in experiments['learning_params']:
         config = reset_config()
+        config.set('environment', 'num_houses', 10)
         config.set('rl_agent', 'learning_rate_actor', actor_lr)
         config.set('rl_agent', 'learning_rate_critic', critic_lr)
         config.set('rl_agent', 'batch_size', batch_size)
@@ -104,6 +125,7 @@ def run_experiments():
 
     for fc1, fc2, fc3 in experiments['network_architecture']:
         config = reset_config()
+        config.set('environment', 'num_houses', 10)
         config.set('actor', 'fc1_dims', fc1)
         config.set('actor', 'fc2_dims', fc2)
         config.set('critic', 'fc1_dims', fc1)
@@ -114,6 +136,7 @@ def run_experiments():
 
     for t_min, t_max, comfort_penalty in experiments['comfort_bounds']:
         config = reset_config()
+        config.set('environment', 'num_houses', 10)
         config.set('environment', 't_min', t_min)
         config.set('environment', 't_max', t_max)
         config.set('environment', 'comfort_penalty', comfort_penalty)
@@ -122,6 +145,7 @@ def run_experiments():
 
     for cap_min, cap_max, n_c, n_d in experiments['battery_params']:
         config = reset_config()
+        config.set('environment', 'num_houses', 10)
         config.set('environment', 'battery_capacity_min', cap_min)
         config.set('environment', 'battery_capacity_max', cap_max)
         config.set('environment', 'n_c', n_c)
@@ -131,6 +155,7 @@ def run_experiments():
 
     for gamma, tau, eps_decay, eps_end in experiments['rl_params']:
         config = reset_config()
+        config.set('environment', 'num_houses', 10)
         config.set('rl_agent', 'gamma', gamma)
         config.set('rl_agent', 'tau', tau)
         config.set('rl_agent', 'epsilon_decay', eps_decay)
@@ -140,6 +165,7 @@ def run_experiments():
 
     for eta_hvac, epsilon, e_max in experiments['hvac_params']:
         config = reset_config()
+        config.set('environment', 'num_houses', 10)
         config.set('environment', 'eta_hvac', eta_hvac)
         config.set('environment', 'epsilon', epsilon)
         config.set('environment', 'e_max', e_max)
@@ -148,6 +174,7 @@ def run_experiments():
 
     for price_penalty, depreciation_coeff in experiments['price_params']:
         config = reset_config()
+        config.set('environment', 'num_houses', 10)
         config.set('cost_model', 'price_penalty', price_penalty)
         config.set('cost_model', 'depreciation_coeff', depreciation_coeff)
         print(f"\nRunning experiment with price parameters: price_penalty={price_penalty}, depreciation={depreciation_coeff}")
@@ -182,4 +209,4 @@ def main():
     train_ddpg()
 
 if __name__ == "__main__":
-    run_experiments()  
+    run_experiments()

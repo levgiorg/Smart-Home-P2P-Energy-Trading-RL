@@ -14,6 +14,25 @@ class Environment:
         self.num_houses = config.get('environment', 'num_houses')
         self.utilities = Utilities(num_houses=self.num_houses)
 
+        # Base feature dimensions per house (constant)
+        self.BASE_STATE_DIM_PER_HOUSE = 9  # Fixed number of base features
+        # Each house's state includes other houses' selling prices
+        self.STATE_DIM_PER_HOUSE = self.BASE_STATE_DIM_PER_HOUSE + self.num_houses
+        
+        # Action dimensions (constant)
+        self.ACTION_DIM_PER_HOUSE = 3  # e_t, a_batt, selling_price
+
+        # Action bounds
+        self.ACTION_BOUNDS = {
+            'e_t': config.get('environment', 'hvac_action_bounds'),
+            'a_batt': config.get('environment', 'battery_action_bounds'),
+            'selling_price': [0.5, 0.95]  
+        }
+
+        # Update config with calculated dimensions
+        config.set('environment', 'state_dim_per_house', self.STATE_DIM_PER_HOUSE)
+        config.set('environment', 'action_dim_per_house', self.ACTION_DIM_PER_HOUSE)
+
         # Load hyperparameters
         self.initial_inside_temperature = config.get('environment', 'initial_inside_temperature')
         self.battery_capacity_min = config.get('environment', 'battery_capacity_min')
@@ -29,19 +48,13 @@ class Environment:
         self.t_min = config.get('environment', 't_min')
         self.beta = config.get('reward', 'beta')
         self.num_time_steps = self.num_hours
+
         # Initialize selling prices for each house
         self.selling_prices = [0.0 for _ in range(self.num_houses)]
         
-        # Grid transaction fee (5%)
+        # Grid transaction fee
         self.grid_fee = config.get('environment', 'grid_fee')
 
-        self.ACTION_DIM = config.get('environment', 'action_dim_per_house')
-        self.STATE_DIM_PER_HOUSE = config.get('environment', 'state_dim_per_house') + self.num_houses
-        self.ACTION_BOUNDS = {
-            'e_t': config.get('environment', 'hvac_action_bounds'),
-            'a_batt': config.get('environment', 'battery_action_bounds'),
-            'selling_price': [0.5, 0.95]  
-        }
         # Initialize temperatures and batteries
         self.inside_temperatures = [self.initial_inside_temperature for _ in range(self.num_houses)]
         self.batteries = [
@@ -70,7 +83,7 @@ class Environment:
     @property
     def action_dim(self):
         """Total action dimension for all houses"""
-        return self.num_houses * self.ACTION_DIM
+        return self.num_houses * self.ACTION_DIM_PER_HOUSE
 
     @property
     def current_state(self):
@@ -80,7 +93,7 @@ class Environment:
     def get_action_space_info(self):
         """Returns information about the action space"""
         return {
-            'dim_per_house': self.ACTION_DIM,
+            'dim_per_house': self.ACTION_DIM_PER_HOUSE,
             'total_dim': self.action_dim,
             'bounds': self.ACTION_BOUNDS,
             'num_houses': self.num_houses

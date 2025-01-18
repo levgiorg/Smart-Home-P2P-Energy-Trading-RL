@@ -15,6 +15,28 @@ class DDPGAgent:
 
     def __init__(self, state_dim, action_dim, action_bounds, config, ckpt=None):
         self.config = config
+        
+        # Get number of houses from config
+        self.num_houses = config.get('environment', 'num_houses')
+        
+        # Calculate expected dimensions
+        self.base_features_per_house = 9  # Fixed number of base features
+        self.features_per_house = self.base_features_per_house + self.num_houses  # Add selling prices
+        self.actions_per_house = 3  # e_t, a_batt, selling_price
+        
+        expected_state_dim = self.num_houses * self.features_per_house
+        expected_action_dim = self.num_houses * self.actions_per_house
+        
+        # Verify dimensions match expected
+        if state_dim != expected_state_dim:
+            print(f"Warning: State dimension mismatch. Got {state_dim}, expected {expected_state_dim}")
+            state_dim = expected_state_dim
+            
+        if action_dim != expected_action_dim:
+            print(f"Warning: Action dimension mismatch. Got {action_dim}, expected {expected_action_dim}")
+            action_dim = expected_action_dim
+
+        # Load other hyperparameters
         self.gamma = config.get('rl_agent', 'gamma')
         self.tau = config.get('rl_agent', 'tau')
         self.batch_size = config.get('rl_agent', 'batch_size')
@@ -48,7 +70,6 @@ class DDPGAgent:
         self.normalizer = Normalizer(self.state_dim, self.device)
         
         # Initialize noise for action exploration (only for e_t and a_batt)
-        # Since we have 3 actions per house now, but only want noise on first 2
         num_houses = self.action_dim // 3
         self.noise = OUNoise(num_houses * 2)  # Only for e_t and a_batt actions
 
