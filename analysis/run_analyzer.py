@@ -43,6 +43,7 @@ class RunAnalyzer:
             'final_selling_price_ratio': np.mean(data['selling_prices'][-100:]) / np.mean(data['grid_prices'][-100:]),  # Final price ratio
             'avg_p2p_energy': np.mean(data['energy_bought_p2p']),  # Average P2P energy traded
             'convergence_speed': self._calculate_convergence(data['rewards_per_house']),  # Episodes to converge
+            'score': np.mean(np.array(data['score']).flatten()) if 'score' in data else 0,  
             'hyperparameters': hyperparams
         }
         
@@ -72,7 +73,8 @@ class RunAnalyzer:
         # Calculate composite score (you can adjust weights based on priorities)
         weights = {
             'final_avg_reward': 0.3,      # 30% weight
-            'max_avg_reward': 0.2,        # 20% weight
+            'score': 0.2,                 # 20% weight
+            'max_avg_reward': 0,        # 20% weight
             'avg_trading_profit': 0.2,    # 20% weight
             'final_selling_price_ratio': 0.15,  # 15% weight
             'avg_p2p_energy': 0.15        # 15% weight

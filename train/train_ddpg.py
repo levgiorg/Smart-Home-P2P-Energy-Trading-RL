@@ -126,11 +126,8 @@ def train_ddpg(config_path='hyperparameters.json', model_name='ddpg_'):
             grid_prices=info['grid_prices']
         )
 
-        # Save model periodically
-        if num_episodes < 1000:
-            save_interval = 100
-        else:
-            save_interval = num_episodes // 10
+        # huge number to no save!
+        save_interval = 7000
 
         if (episode + 1) % save_interval == 0:
             model_path = os.path.join(models_dir, f'model_checkpoint_{episode + 1}.pt')

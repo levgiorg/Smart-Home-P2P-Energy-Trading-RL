@@ -20,6 +20,7 @@ class EnhancedRunAnalyzer(RunAnalyzer):
         
         metrics_to_plot = [
             'final_avg_reward', 
+            'score',
             'max_avg_reward', 
             'avg_trading_profit',
             'final_selling_price_ratio',
@@ -40,7 +41,8 @@ class EnhancedRunAnalyzer(RunAnalyzer):
         df = self.analyze_all_runs()
         top_runs = df.head(n_top)
         
-        fig, axs = plt.subplots(2, 2, figsize=(15, 12))
+        # Change to 3x2 grid to include score
+        fig, axs = plt.subplots(3, 2, figsize=(15, 18))
         colors = plt.cm.rainbow(np.linspace(0, 1, n_top))
         
         # Plot rewards with moving average
@@ -81,13 +83,36 @@ class EnhancedRunAnalyzer(RunAnalyzer):
         for idx, (run_id, color) in enumerate(zip(top_runs['run_id'], colors)):
             _, data = self.load_run_data(run_id)
             energy_percentage = (np.array(data['energy_bought_p2p']) / 
-                               (np.array(data['HVAC_energy_cons']) + 1e-6)) * 100
+                            (np.array(data['HVAC_energy_cons']) + 1e-6)) * 100
             mean_percentage = np.mean(energy_percentage, axis=0)
             
             axs[1, 1].plot(mean_percentage, label=f'{run_id}', color=color)
         axs[1, 1].set_title('P2P Energy Trading Percentage')
         axs[1, 1].set_ylabel('% of Total Energy')
         axs[1, 1].legend()
+        
+        # Add new plot for score
+        for idx, (run_id, color) in enumerate(zip(top_runs['run_id'], colors)):
+            _, data = self.load_run_data(run_id)
+            if 'score' in data:
+                # Convert score data to numpy array and ensure it's 1D
+                scores = np.array(data['score'])
+                if scores.ndim > 1:
+                    scores = np.mean(scores, axis=1)  # Take mean if it's multi-dimensional
+                
+                # Plot raw data with alpha
+                axs[2, 0].plot(scores, alpha=0.3, color=color)
+                
+                # Plot moving average
+                window = 100
+                moving_avg_score = pd.Series(scores).rolling(window=window).mean()
+                axs[2, 0].plot(moving_avg_score, label=f'{run_id} (MA)', color=color, linewidth=2)
+        
+        axs[2, 0].set_title('Score Evolution\n(with 100-episode moving average)')
+        axs[2, 0].legend()
+        
+        # Hide the unused subplot
+        axs[2, 1].set_visible(False)
         
         plt.tight_layout()
         return fig
@@ -100,7 +125,7 @@ class EnhancedRunAnalyzer(RunAnalyzer):
         
         # Print summary statistics
         print("Summary Statistics:")
-        print(df[['final_avg_reward', 'max_avg_reward', 'avg_trading_profit', 
+        print(df[['final_avg_reward', 'score', 'max_avg_reward', 'avg_trading_profit', 
                  'final_selling_price_ratio', 'avg_p2p_energy']].describe())
         
         print("\n=== Top 5 Runs Analysis ===\n")
@@ -109,6 +134,7 @@ class EnhancedRunAnalyzer(RunAnalyzer):
         for _, row in top_runs.iterrows():
             print(f"\nRun {row['run_id']}:")
             print(f"Composite Score: {row['composite_score']:.4f}")
+            print(f"Score: {row['score']:.4f}")  # Added score printing
             print(f"Final Average Reward: {row['final_avg_reward']:.2f}")
             print(f"Maximum Average Reward: {row['max_avg_reward']:.2f}")
             print(f"Average Trading Profit: {row['avg_trading_profit']:.2f}")
