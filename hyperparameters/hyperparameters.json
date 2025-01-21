@@ -35,30 +35,41 @@
         "comfort_penalty": 5,
         "c_max": 3,
         "d_max": 3,
-        "n_c": 0.95,
-        "n_d": 0.95,
-        "t_min": 19.5,
-        "t_max": 22.5,
+        "n_c": 0.98,
+        "n_d": 0.98,
+        "t_min": 20.0,
+        "t_max": 22.0,
         "epsilon": 0.7,
-        "eta_hvac": 1,
+        "eta_hvac": 1.1,
         "e_max": 200,
         "initial_inside_temperature": 21.0,
         "battery_capacity_min": 0.6,
         "battery_capacity_max": 10.0,
         "action_dim_per_house": 3,
-        "state_dim_per_house": 12,
-        "hvac_action_bounds": [-1, 1],
-        "battery_action_bounds": [-1, 1],
-        "selling_price_bounds": [0, 1],
-        "grid_fee": 0.05
+        "state_dim_per_house": 19,
+        "hvac_action_bounds": [
+            -1,
+            1
+        ],
+        "battery_action_bounds": [
+            -1,
+            1
+        ],
+        "selling_price_bounds": [
+            0,
+            1
+        ],
+        "grid_fee": 0.018,
+        "total_state_dim": 190,
+        "total_action_dim": 30
     },
     "cost_model": {
-        "price_penalty": 100,
+        "price_penalty": 90,
         "delta": 0.9,
         "depreciation_coeff": 1
     },
     "reward": {
-        "beta": 1.6
+        "beta": 1.2
     },
     "lstm_model": {
         "input_size": 1,

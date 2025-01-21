@@ -29,9 +29,15 @@ class Environment:
             'selling_price': [0.5, 0.95]  
         }
 
+        # Calculate total dimensions
+        self._state_dim = self.STATE_DIM_PER_HOUSE * self.num_houses
+        self._action_dim = self.ACTION_DIM_PER_HOUSE * self.num_houses
+
         # Update config with calculated dimensions
         config.set('environment', 'state_dim_per_house', self.STATE_DIM_PER_HOUSE)
         config.set('environment', 'action_dim_per_house', self.ACTION_DIM_PER_HOUSE)
+        config.set('environment', 'total_state_dim', self._state_dim)
+        config.set('environment', 'total_action_dim', self._action_dim)
 
         # Load hyperparameters
         self.initial_inside_temperature = config.get('environment', 'initial_inside_temperature')

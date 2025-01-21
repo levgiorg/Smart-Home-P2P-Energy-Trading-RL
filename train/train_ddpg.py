@@ -8,9 +8,15 @@ from hyperparameters import Config
 from utilities import Utilities
 from bookkeeper import BookKeeper
 
-def train_ddpg(config_path='hyperparameters.json', model_name='ddpg_'):
+def train_ddpg(config_path='hyperparameters.json', model_name='ddpg_', enable_saving=True):
     """
     Train a DDPG agent in a decentralized setting (one agent per house).
+    
+    Args:
+        config_path (str): Path to hyperparameters config file
+        model_name (str): Prefix for saved model files
+        enable_saving (bool): Whether to save model checkpoints during training
+        save_interval (int): Number of episodes between saves (only used if enable_saving is True)
     """
     # 1. Load configuration
     config = Config()
@@ -31,14 +37,16 @@ def train_ddpg(config_path='hyperparameters.json', model_name='ddpg_'):
     # 5. Initialize BookKeeper
     bookkeeper = BookKeeper(config, model_name=model_name)
 
-    # Create models directory
-    models_dir = os.path.join(bookkeeper.run_dir, 'models')
-    os.makedirs(models_dir, exist_ok=True)
+    # Create models directory only if saving is enabled
+    models_dir = None
+    if enable_saving:
+        models_dir = os.path.join(bookkeeper.run_dir, 'models')
+        os.makedirs(models_dir, exist_ok=True)
 
-    # 6. Initialize the DDPG agent with correct dimensions
+    # 6. Initialize the DDPG agent with dimensions from environment
     agent = DDPGAgent(
-        state_dim=36,  
-        action_dim=9,  
+        state_dim=state_info['total_dim'],
+        action_dim=action_info['total_dim'],
         action_bounds=action_info['bounds'],
         config=config
     )
@@ -51,7 +59,9 @@ def train_ddpg(config_path='hyperparameters.json', model_name='ddpg_'):
     trading_profit_per_house = np.zeros(num_houses)  
     energy_bought_p2p_per_house = np.zeros(num_houses)
     selling_prices_per_house = np.zeros(num_houses)  
-        
+    
+    save_interval = num_episodes // 10
+
     # 7. Training loop
     for episode in range(num_episodes):
         # Reset environment and get initial state
@@ -105,7 +115,7 @@ def train_ddpg(config_path='hyperparameters.json', model_name='ddpg_'):
             trading_profit_per_house += np.array(info['trading_profit'])
             energy_bought_p2p_per_house += np.array(info['energy_bought_p2p'])
             
-            # Update selling prices (assuming it's in the info dict)
+            # Update selling prices
             if 'selling_prices' in info:
                 selling_prices_per_house = np.array(info['selling_prices'])
             
@@ -126,10 +136,8 @@ def train_ddpg(config_path='hyperparameters.json', model_name='ddpg_'):
             grid_prices=info['grid_prices']
         )
 
-        # huge number to no save!
-        save_interval = 7000
-
-        if (episode + 1) % save_interval == 0:
+        # Save model checkpoint if enabled
+        if enable_saving and (episode + 1) % save_interval == 0:
             model_path = os.path.join(models_dir, f'model_checkpoint_{episode + 1}.pt')
             torch.save({
                 'episode': episode + 1,
@@ -147,9 +155,9 @@ def train_ddpg(config_path='hyperparameters.json', model_name='ddpg_'):
             
             bookkeeper.save_metrics()
 
-    # Save final model
+    # Save final model (always save the final model regardless of enable_saving)
     print("Training complete. Saving final model ...")
-    final_model_path = os.path.join(models_dir, f'model_final.pt')
+    final_model_path = os.path.join(bookkeeper.run_dir, f'model_final.pt')
     torch.save({
         'episode': num_episodes,
         'actor_state_dict': agent.actor.state_dict(),
@@ -170,4 +178,4 @@ def train_ddpg(config_path='hyperparameters.json', model_name='ddpg_'):
     bookkeeper.plot_selling_prices(plot_average_only=True)  
 
 if __name__ == "__main__":
-    train_ddpg()
+    train_ddpg(enable_saving=True, save_interval=1000)  # Example usage
