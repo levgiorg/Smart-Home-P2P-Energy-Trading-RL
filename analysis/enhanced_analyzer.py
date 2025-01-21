@@ -58,17 +58,21 @@ class EnhancedRunAnalyzer(RunAnalyzer):
             moving_avg = pd.Series(rewards).rolling(window=window).mean()
             axs[0, 0].plot(moving_avg, label=f'{run_id} (MA)', color=color, linewidth=2)
             
-        axs[0, 0].set_title('Average Rewards per Episode\n(with 100-episode moving average)')
-        axs[0, 0].legend()
-        
         # Plot selling prices relative to grid prices
         for idx, (run_id, color) in enumerate(zip(top_runs['run_id'], colors)):
             _, data = self.load_run_data(run_id)
             price_ratio = np.array(data['selling_prices']) / np.array(data['grid_prices'])[:, None]
             mean_ratio = np.mean(price_ratio, axis=1)
             
-            axs[0, 1].plot(mean_ratio, label=f'{run_id}', color=color)
-        axs[0, 1].set_title('Selling Price / Grid Price Ratio')
+            # Plot raw data with alpha
+            axs[0, 1].plot(mean_ratio, alpha=0.3, color=color)
+            
+            # Plot moving average
+            window = 100
+            moving_avg = pd.Series(mean_ratio).rolling(window=window).mean()
+            axs[0, 1].plot(moving_avg, label=f'{run_id} (MA)', color=color, linewidth=2)
+
+        axs[0, 1].set_title('Selling Price / Grid Price Ratio\n(with 100-episode moving average)')
         axs[0, 1].legend()
         
         # Plot cumulative trading profit
