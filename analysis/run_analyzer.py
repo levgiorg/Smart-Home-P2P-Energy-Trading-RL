@@ -74,7 +74,7 @@ class RunAnalyzer:
         weights = {
             'final_avg_reward': 0.3,      # 30% weight
             'score': 0.2,                 # 20% weight
-            'max_avg_reward': 0,        # 20% weight
+            'max_avg_reward': 0,       
             'avg_trading_profit': 0.2,    # 20% weight
             'final_selling_price_ratio': 0.15,  # 15% weight
             'avg_p2p_energy': 0.15        # 15% weight
