@@ -42,7 +42,7 @@ class EnhancedRunAnalyzer(RunAnalyzer):
         top_runs = df.head(n_top)
         
         # Initialize grid
-        fig, axs = plt.subplots(2, 2, figsize=(15, 12))
+        fig, axs = plt.subplots(2, 2, figsize=(20, 12))
         colors = plt.cm.rainbow(np.linspace(0, 1, n_top))
         
         # Plot rewards with moving average
