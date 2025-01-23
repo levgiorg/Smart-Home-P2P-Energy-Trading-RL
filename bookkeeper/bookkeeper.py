@@ -2,11 +2,13 @@ import os
 import json
 import shutil
 import pickle
+
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.cm as cm
 
 from hyperparameters import Config
+
 
 class BookKeeper:
     """

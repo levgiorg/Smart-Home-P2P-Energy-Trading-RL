@@ -6,6 +6,7 @@ import torch
 from hyperparameters import Config
 from utilities import Utilities
 
+
 class Environment:   
     def __init__(self, dynamic=False, eval_mode=False):
         config = Config()

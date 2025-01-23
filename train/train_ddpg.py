@@ -1,12 +1,14 @@
+import os
+
 import torch
 import numpy as np
-import os
 
 from agents import DDPGAgent
 from environment import Environment
 from hyperparameters import Config
 from utilities import Utilities
 from bookkeeper import BookKeeper
+
 
 def train_ddpg(config_path='hyperparameters.json', model_name='ddpg_', enable_saving=False):
     """

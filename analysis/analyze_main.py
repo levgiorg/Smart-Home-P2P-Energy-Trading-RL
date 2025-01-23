@@ -1,5 +1,7 @@
-from enhanced_analyzer import EnhancedRunAnalyzer
 import matplotlib.pyplot as plt
+
+from enhanced_analyzer import EnhancedRunAnalyzer
+
 
 def main():
     analyzer = EnhancedRunAnalyzer("ml-outputs/7000 episodes : 10 houses")

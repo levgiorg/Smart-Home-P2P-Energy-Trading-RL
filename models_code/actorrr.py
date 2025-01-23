@@ -4,6 +4,7 @@ import torch.nn.functional as F
 
 from hyperparameters import Config
 
+
 class Actor(nn.Module):
     """
     Actor network for DDPG agent with dynamic sizing based on number of houses.

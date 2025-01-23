@@ -1,9 +1,10 @@
 import os
-import pandas as pd
-import numpy as np
 import json
 import pickle
 from pathlib import Path
+
+import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -20,7 +21,6 @@ class EnhancedRunAnalyzer(RunAnalyzer):
         
         metrics_to_plot = [
             'final_avg_reward', 
-            'score',
             'max_avg_reward', 
             'avg_trading_profit',
             'final_selling_price_ratio',
@@ -32,7 +32,7 @@ class EnhancedRunAnalyzer(RunAnalyzer):
         for i, metric in enumerate(metrics_to_plot):
             sns.boxplot(data=df, y=metric, ax=axs[i])
             axs[i].set_title(f'Distribution of {metric}')
-            
+        
         plt.tight_layout()
         return fig
 
@@ -41,8 +41,8 @@ class EnhancedRunAnalyzer(RunAnalyzer):
         df = self.analyze_all_runs()
         top_runs = df.head(n_top)
         
-        # Change to 3x2 grid to include score
-        fig, axs = plt.subplots(3, 2, figsize=(15, 18))
+        # Initialize grid
+        fig, axs = plt.subplots(2, 2, figsize=(15, 12))
         colors = plt.cm.rainbow(np.linspace(0, 1, n_top))
         
         # Plot rewards with moving average
@@ -57,7 +57,10 @@ class EnhancedRunAnalyzer(RunAnalyzer):
             window = 100
             moving_avg = pd.Series(rewards).rolling(window=window).mean()
             axs[0, 0].plot(moving_avg, label=f'{run_id} (MA)', color=color, linewidth=2)
-            
+
+        axs[0, 0].set_title('Average Reward per House\n(with 100-episode moving average)')
+        axs[0, 0].legend()
+        
         # Plot selling prices relative to grid prices
         for idx, (run_id, color) in enumerate(zip(top_runs['run_id'], colors)):
             _, data = self.load_run_data(run_id)
@@ -95,29 +98,6 @@ class EnhancedRunAnalyzer(RunAnalyzer):
         axs[1, 1].set_ylabel('% of Total Energy')
         axs[1, 1].legend()
         
-        # Add new plot for score
-        for idx, (run_id, color) in enumerate(zip(top_runs['run_id'], colors)):
-            _, data = self.load_run_data(run_id)
-            if 'score' in data:
-                # Convert score data to numpy array and ensure it's 1D
-                scores = np.array(data['score'])
-                if scores.ndim > 1:
-                    scores = np.mean(scores, axis=1)  # Take mean if it's multi-dimensional
-                
-                # Plot raw data with alpha
-                axs[2, 0].plot(scores, alpha=0.3, color=color)
-                
-                # Plot moving average
-                window = 100
-                moving_avg_score = pd.Series(scores).rolling(window=window).mean()
-                axs[2, 0].plot(moving_avg_score, label=f'{run_id} (MA)', color=color, linewidth=2)
-        
-        axs[2, 0].set_title('Score Evolution\n(with 100-episode moving average)')
-        axs[2, 0].legend()
-        
-        # Hide the unused subplot
-        axs[2, 1].set_visible(False)
-        
         plt.tight_layout()
         return fig
 
@@ -129,8 +109,8 @@ class EnhancedRunAnalyzer(RunAnalyzer):
         
         # Print summary statistics
         print("Summary Statistics:")
-        print(df[['final_avg_reward', 'score', 'max_avg_reward', 'avg_trading_profit', 
-                 'final_selling_price_ratio', 'avg_p2p_energy']].describe())
+        print(df[['final_avg_reward', 'max_avg_reward', 'avg_trading_profit', 
+                'final_selling_price_ratio', 'avg_p2p_energy']].describe())
         
         print("\n=== Top 5 Runs Analysis ===\n")
         top_runs = df.head()
@@ -138,14 +118,11 @@ class EnhancedRunAnalyzer(RunAnalyzer):
         for _, row in top_runs.iterrows():
             print(f"\nRun {row['run_id']}:")
             print(f"Composite Score: {row['composite_score']:.4f}")
-            print(f"Score: {row['score']:.4f}")  # Added score printing
             print(f"Final Average Reward: {row['final_avg_reward']:.2f}")
             print(f"Maximum Average Reward: {row['max_avg_reward']:.2f}")
             print(f"Average Trading Profit: {row['avg_trading_profit']:.2f}")
             print(f"Final Price Ratio: {row['final_selling_price_ratio']:.2f}")
             print(f"Average P2P Energy: {row['avg_p2p_energy']:.2f}")
             print(f"Convergence Speed: {row['convergence_speed']} episodes")
-            
+        
         return df
-
- 

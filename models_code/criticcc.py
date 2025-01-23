@@ -4,6 +4,7 @@ import torch.nn.functional as F
 
 from hyperparameters import Config
 
+
 class Critic(nn.Module):
     """
     Critic network for DDPG agent with dynamic sizing based on number of houses.

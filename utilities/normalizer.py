@@ -1,5 +1,6 @@
 import torch
 
+
 class Normalizer:
     """
     Normalizes the input data by computing an online variance and mean.

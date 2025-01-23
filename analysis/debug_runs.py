@@ -1,10 +1,14 @@
-from enhanced_analyzer import EnhancedRunAnalyzer
-import matplotlib.pyplot as plt
 import os
 import pickle
 from pathlib import Path
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+
+from enhanced_analyzer import EnhancedRunAnalyzer
+
 
 class VersionAwareAnalyzer(EnhancedRunAnalyzer):
     def __init__(self, base_path, version):
