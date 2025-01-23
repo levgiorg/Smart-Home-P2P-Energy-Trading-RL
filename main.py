@@ -9,69 +9,71 @@ from train import train_ddpg
 
 def run_experiments():
     """
-    Enhanced hyperparameter testing focusing on successful comfort parameters
-    and incorporating proven hyperparameters from previous runs.
+    Enhanced hyperparameter testing with optimized parameters for 10 houses
+    while maintaining original directory structure.
     """
     config = Config()
     original_config = json.loads(json.dumps(Config.config))
-    
+
     def reset_config():
         return Config()
 
-    # Define experiment sets based on successful previous runs and focusing on promising areas
     experiments = {
-        'comfort_refined': [
+        'reward_stability': [
+            # (beta, comfort_penalty, price_penalty)
+            (1.1, 4, 85),    # Balanced approach
+            (1.3, 3, 95),    # Reward-focused
+            (0.9, 5, 75)     # Stability-focused
+        ],
+
+        'trading_optimization': [
+            # (grid_fee, initial_selling_price_ratio, min_selling_price)
+            (0.015, 0.7, 0.45),  # Aggressive trading
+            (0.022, 0.8, 0.55),  # Conservative trading
+            (0.018, 0.75, 0.5)   # Balanced approach
+        ],
+
+        'network_advanced': [
+            # (fc1_dims, fc2_dims, fc3_dims, batch_norm)
+            (1024, 768, 512),     # Deeper network
+            (2048, 1024, 512),    # Much larger network
+            (1536, 768, 384)      # Wide but shallow
+        ],
+
+        'learning_advanced': [
+            # (actor_lr, critic_lr, batch_size, memory_size, update_interval)
+            (5e-5, 5e-4, 512, 1500000, 2),    # Larger batches, more memory
+            (8e-5, 8e-4, 384, 1200000, 3),    # Faster learning
+            (3e-5, 3e-4, 768, 2000000, 1)     # Very large batches
+        ],
+
+        'battery_advanced': [
+            # (capacity_min, capacity_max, n_c, n_d, initial_charge)
+            (2.0, 300.0, 0.98, 0.98, 0.7),    # High capacity, high efficiency
+            (1.5, 250.0, 0.99, 0.99, 0.6),    # Maximum efficiency
+            (2.5, 350.0, 0.97, 0.97, 0.8)     # Maximum capacity
+        ],
+
+        'comfort_advanced': [
             # (t_min, t_max, comfort_penalty, hvac_efficiency)
-            # Based on successful (20.0, 22.0, 5) configuration
-            (20.0, 22.0, 5, 1.1),    # Original successful setup with standard HVAC
-            (20.0, 22.0, 5.5, 1.15),  # Increased penalty to enhance comfort adherence
-            (20.0, 22.0, 4.5, 1.05),  # Reduced penalty for more flexibility
-            (19.8, 22.2, 5, 1.1),     # Slightly wider range with same penalty
-            (20.2, 21.8, 5, 1.1),     # Narrower range for stricter comfort
+            (19.8, 22.2, 4, 1.1),    # Strict comfort
+            (19.5, 22.5, 3, 1.2),    # Better HVAC
+            (19.2, 22.8, 5, 1.0)     # Flexible comfort
         ],
-        
-        'advanced_comfort_trading': [
-            # (t_min, t_max, comfort_penalty, grid_fee, beta)
-            (20.0, 22.0, 5, 0.015, 1.3),    # Low grid fee for trading
-            (20.0, 22.0, 5, 0.018, 1.2),    # Moderate grid fee
-            (20.0, 22.0, 5.5, 0.016, 1.25), # Balanced approach
-        ],
-        
-        'network_comfort_optimized': [
-            # (fc1_dims, fc2_dims, fc3_dims)
-            (1024, 512, 512),     # Larger network for complex comfort patterns
-            (768, 384, 384),      # Proven successful architecture
-            (1536, 768, 768),     # Extra capacity for comfort optimization
-        ],
-        
-        'learning_comfort_focused': [
-            # (actor_lr, critic_lr, batch_size, memory_size)
-            (2e-4, 2e-3, 512, 1200000),   # Current successful values
-            (1e-4, 1e-3, 768, 1500000),   # Larger batches for stability
-            (3e-4, 3e-3, 384, 1000000),   # Faster learning for comfort
-        ],
-        
-        'comfort_battery_combined': [
-            # (t_min, t_max, comfort_penalty, cap_min, cap_max, n_c)
-            (20.0, 22.0, 5, 2.0, 250.0, 0.97),    # Higher capacity
-            (20.0, 22.0, 5, 1.5, 200.0, 0.98),    # Better efficiency
-            (20.0, 22.0, 5, 2.5, 300.0, 0.96),    # Maximum capacity
-        ],
-        
-        'multi_parameter': [
-            # (beta, grid_fee, comfort_penalty, price_penalty, n_c, n_d, t_min, t_max)
-            (1.3, 0.015, 5, 95, 0.97, 0.97, 20.0, 22.0),    # Reward focused
-            (1.2, 0.018, 5, 90, 0.98, 0.98, 20.0, 22.0),    # Trading focused
-            (1.25, 0.016, 5, 93, 0.975, 0.975, 20.0, 22.0), # Balanced
+
+        'multi_objective': [
+            # (beta, grid_fee, comfort_penalty, price_penalty, n_c, n_d)
+            (1.2, 0.018, 4, 90, 0.98, 0.98),   # Trading focused
+            (1.1, 0.020, 3, 85, 0.99, 0.99),   # Efficiency focused
+            (1.3, 0.015, 5, 95, 0.97, 0.97)    # Reward focused
         ]
     }
 
     # Run experiments for each parameter combination
     config = reset_config()
     config.set('environment', 'num_houses', 10)
-
-    # Run multi-parameter experiments first
-    for beta, fee, comfort_p, price_p, n_c, n_d, t_min, t_max in experiments['multi_parameter']:
+    # Run multi-objective experiments first
+    for beta, fee, comfort_p, price_p, n_c, n_d in experiments['multi_objective']:
         config = reset_config()
         config.set('environment', 'num_houses', 10)
         config.set('reward', 'beta', beta)
@@ -80,36 +82,21 @@ def run_experiments():
         config.set('cost_model', 'price_penalty', price_p)
         config.set('environment', 'n_c', n_c)
         config.set('environment', 'n_d', n_d)
-        config.set('environment', 't_min', t_min)
-        config.set('environment', 't_max', t_max)
-        print(f"\nRunning multi-parameter experiment with beta={beta}, comfort_penalty={comfort_p}")
+        print(f"\nRunning multi-objective experiment with beta={beta}, fee={fee}")
         main()
 
-    # Run refined comfort experiments
-    for t_min, t_max, comfort_penalty, hvac_eff in experiments['comfort_refined']:
+    # Run trading optimization experiments
+    for fee, init_price, min_price in experiments['trading_optimization']:
         config = reset_config()
         config.set('environment', 'num_houses', 10)
-        config.set('environment', 't_min', t_min)
-        config.set('environment', 't_max', t_max)
-        config.set('environment', 'comfort_penalty', comfort_penalty)
-        config.set('environment', 'eta_hvac', hvac_eff)
-        print(f"\nRunning refined comfort experiment with range={t_min}-{t_max}, penalty={comfort_penalty}")
+        config.set('environment', 'grid_fee', fee)
+        config.set('environment', 'initial_selling_price_ratio', init_price)
+        config.set('environment', 'min_selling_price', min_price)
+        print(f"\nRunning trading optimization with fee={fee}, init_price={init_price}")
         main()
 
-    # Run advanced comfort-trading experiments
-    for t_min, t_max, comfort_penalty, grid_fee, beta in experiments['advanced_comfort_trading']:
-        config = reset_config()
-        config.set('environment', 'num_houses', 10)
-        config.set('environment', 't_min', t_min)
-        config.set('environment', 't_max', t_max)
-        config.set('environment', 'comfort_penalty', comfort_penalty)
-        config.set('environment', 'grid_fee', grid_fee)
-        config.set('reward', 'beta', beta)
-        print(f"\nRunning comfort-trading experiment with penalty={comfort_penalty}, fee={grid_fee}")
-        main()
-
-    # Run network architecture experiments
-    for fc1, fc2, fc3 in experiments['network_comfort_optimized']:
+    # Run advanced network architecture experiments
+    for fc1, fc2, fc3 in experiments['network_advanced']:
         config = reset_config()
         config.set('environment', 'num_houses', 10)
         config.set('actor', 'fc1_dims', fc1)
@@ -117,32 +104,52 @@ def run_experiments():
         config.set('critic', 'fc1_dims', fc1)
         config.set('critic', 'fc2_dims', fc2)
         config.set('critic', 'fc3_dims', fc3)
-        print(f"\nRunning network experiment with architecture: {fc1}, {fc2}, {fc3}")
+        print(f"\nRunning advanced network with architecture: {fc1}, {fc2}, {fc3}")
         main()
 
-    # Run learning parameter experiments
-    for actor_lr, critic_lr, batch_size, memory_size in experiments['learning_comfort_focused']:
+# Run advanced learning parameter experiments
+    for actor_lr, critic_lr, batch_size, memory_size, update_interval in experiments['learning_advanced']:
         config = reset_config()
         config.set('environment', 'num_houses', 10)
         config.set('rl_agent', 'learning_rate_actor', actor_lr)
         config.set('rl_agent', 'learning_rate_critic', critic_lr)
         config.set('rl_agent', 'batch_size', batch_size)
         config.set('rl_agent', 'memory_size', memory_size)
-        print(f"\nRunning learning experiment with actor_lr={actor_lr}, batch_size={batch_size}")
+        config.set('rl_agent', 'update_interval', update_interval)
+        print(f"\nRunning advanced learning with actor_lr={actor_lr}, batch_size={batch_size}")
         main()
 
-    # Run comfort-battery combined experiments
-    for t_min, t_max, comfort_penalty, cap_min, cap_max, n_c in experiments['comfort_battery_combined']:
+    # Run advanced battery parameter experiments
+    for cap_min, cap_max, n_c, n_d, initial_charge in experiments['battery_advanced']:
+        config = reset_config()
+        config.set('environment', 'num_houses', 10)
+        config.set('environment', 'battery_capacity_min', cap_min)
+        config.set('environment', 'battery_capacity_max', cap_max)
+        config.set('environment', 'n_c', n_c)
+        config.set('environment', 'n_d', n_d)
+        config.set('environment', 'initial_battery_charge', initial_charge)
+        print(f"\nRunning advanced battery with cap_max={cap_max}, efficiency={n_c}")
+        main()
+
+    # Run advanced comfort parameter experiments
+    for t_min, t_max, comfort_penalty, hvac_efficiency in experiments['comfort_advanced']:
         config = reset_config()
         config.set('environment', 'num_houses', 10)
         config.set('environment', 't_min', t_min)
         config.set('environment', 't_max', t_max)
         config.set('environment', 'comfort_penalty', comfort_penalty)
-        config.set('environment', 'battery_capacity_min', cap_min)
-        config.set('environment', 'battery_capacity_max', cap_max)
-        config.set('environment', 'n_c', n_c)
-        config.set('environment', 'n_d', n_c)
-        print(f"\nRunning comfort-battery experiment with cap_max={cap_max}, efficiency={n_c}")
+        config.set('environment', 'hvac_efficiency', hvac_efficiency)
+        print(f"\nRunning advanced comfort with range={t_min}-{t_max}, hvac_eff={hvac_efficiency}")
+        main()
+
+    # Run reward stability experiments
+    for beta, comfort_penalty, price_penalty in experiments['reward_stability']:
+        config = reset_config()
+        config.set('environment', 'num_houses', 10)
+        config.set('reward', 'beta', beta)
+        config.set('environment', 'comfort_penalty', comfort_penalty)
+        config.set('cost_model', 'price_penalty', price_penalty)
+        print(f"\nRunning reward stability with beta={beta}, penalties={comfort_penalty},{price_penalty}")
         main()
 
     # Restore original configuration
@@ -154,10 +161,10 @@ def run_experiments():
 def main():
     parser = argparse.ArgumentParser(description="Train DDPG for Smart Home Energy Management")
     args = parser.parse_args()
-    
+
     config = Config()
     random_seed = config.get('simulation', 'random_seed')
-    
+
     if random_seed is not None:
         random.seed(random_seed)
         np.random.seed(random_seed)
@@ -170,7 +177,7 @@ def main():
         print(f"Using random seed from config: {random_seed}")
     else:
         print("No random seed set in config. Using random initialization.")
-    
+
     train_ddpg()
 
 if __name__ == "__main__":
