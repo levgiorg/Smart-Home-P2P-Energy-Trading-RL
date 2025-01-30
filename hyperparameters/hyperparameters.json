@@ -61,7 +61,12 @@
         ],
         "grid_fee": 0.018,
         "total_state_dim": 190,
-        "total_action_dim": 30
+        "total_action_dim": 30,
+        "price_ceiling": {
+            "enabled": true,
+            "markup_factor": 1.2,
+            "base_margin": 0.1
+        }
     },
     "cost_model": {
         "price_penalty": 90,
@@ -85,5 +90,13 @@
     "paths": {
         "weather_data": "data/ninja_weather_55.6838_12.5354_uncorrected.csv",
         "price_data": "data/2014_DK2_spot_prices.csv"
+    },
+    "anti_cartel": {
+        "mechanism_type": "detection",
+        "monitoring_window": 100,
+        "similarity_threshold": 0.85,
+        "penalty_factor": 1.5,
+        "markup_limit": 0.2,
+        "market_elasticity": -0.5
     }
 }

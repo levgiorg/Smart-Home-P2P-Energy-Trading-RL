@@ -179,5 +179,3 @@ def train_ddpg(config_path='hyperparameters.json', model_name='ddpg_', enable_sa
     bookkeeper.plot_metrics(plot_average_only=True)
     bookkeeper.plot_selling_prices(plot_average_only=True)  
 
-if __name__ == "__main__":
-    train_ddpg(enable_saving=True, save_interval=1000)  # Example usage
