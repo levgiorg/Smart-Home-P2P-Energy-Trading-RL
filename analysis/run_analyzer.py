@@ -10,7 +10,7 @@ import numpy as np
 class RunAnalyzer:
     def __init__(self, base_path="ml-outputs"):
         self.base_path = Path(base_path)
-        self.runs = [d for d in os.listdir(base_path) if d.startswith('run_')]
+        self.runs = [d for d in os.listdir(base_path) if d.endswith('v5 runs')]
         self.metrics = {}
         
     def load_run_data(self, run_id):
@@ -75,8 +75,8 @@ class RunAnalyzer:
         weights = {
             'final_avg_reward': 0.35,      
             'max_avg_reward': 0.0,       
-            'avg_trading_profit': 0.4,    
-            'final_selling_price_ratio': 0.1,  
+            'avg_trading_profit': 0.2,    
+            'final_selling_price_ratio': 0.3,  
             'avg_p2p_energy': 0.15        
         }
         

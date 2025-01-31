@@ -4,7 +4,7 @@ from enhanced_analyzer import EnhancedRunAnalyzer
 
 
 def main():
-    analyzer = EnhancedRunAnalyzer("ml-outputs")
+    analyzer = EnhancedRunAnalyzer("ml-outputs/7000 episodes : 10 houses")
     
     # Plot detailed comparison of top runs
     analyzer.plot_top_runs_detailed()
