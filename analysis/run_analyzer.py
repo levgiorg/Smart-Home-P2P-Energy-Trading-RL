@@ -73,14 +73,13 @@ class RunAnalyzer:
         
         # Calculate composite score (you can adjust weights based on priorities)
         weights = {
-            'final_avg_reward': 0.3,      # 30% weight
-            'max_avg_reward': 0.0,       # 20% weight
-            'avg_trading_profit': 0.4,    # 20% weight
-            'final_selling_price_ratio': 0.15,  # 15% weight
-            'avg_p2p_energy': 0.15        # 15% weight
+            'final_avg_reward': 0.35,      
+            'max_avg_reward': 0.0,       
+            'avg_trading_profit': 0.4,    
+            'final_selling_price_ratio': 0.1,  
+            'avg_p2p_energy': 0.15        
         }
         
         df['composite_score'] = sum(df_norm[col] * weight for col, weight in weights.items())
         
         return df.sort_values('composite_score', ascending=False)
-    

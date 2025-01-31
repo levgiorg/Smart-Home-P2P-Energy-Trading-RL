@@ -201,7 +201,7 @@ class Environment:
             'trading_profit': [],
             'energy_bought_p2p': [],
             'selling_prices': [],
-            'anti_cartel_penalties': []  # New field for transparency
+            'anti_cartel_penalties': []  
         }
         
         # Calculate initial energy balance for each house
@@ -221,7 +221,8 @@ class Environment:
                 'selling_price': self.selling_prices[i],
             })
         
-        # Process transactions and energy trading
+        # Identifies houses that have excess energy to sell, those needing energy, sorts sellers by price, 
+        # and initializes a record of transactions for each house.
         sellers = [h for h in house_energy_status if h['excess'] > 0]
         buyers = [h for h in house_energy_status if h['deficit'] > 0]
         sellers.sort(key=lambda x: x['selling_price'])
