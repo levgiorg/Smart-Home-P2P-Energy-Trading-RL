@@ -32,11 +32,11 @@
     },
     "environment": {
         "num_houses": 10,
-        "comfort_penalty": 4,
+        "comfort_penalty": 5,
         "c_max": 3,
         "d_max": 3,
-        "n_c": 0.98,
-        "n_d": 0.98,
+        "n_c": 0.97,
+        "n_d": 0.97,
         "t_min": 20.0,
         "t_max": 22.0,
         "epsilon": 0.7,
@@ -59,22 +59,24 @@
             0,
             1
         ],
-        "grid_fee": 0.018,
+        "grid_fee": 0.015,
         "total_state_dim": 190,
         "total_action_dim": 30,
         "price_ceiling": {
             "enabled": true,
             "markup_factor": 1.2,
             "base_margin": 0.1
-        }
+        },
+        "initial_selling_price_ratio": 0.7,
+        "min_selling_price": 0.45
     },
     "cost_model": {
-        "price_penalty": 90,
+        "price_penalty": 95,
         "delta": 0.9,
         "depreciation_coeff": 1
     },
     "reward": {
-        "beta": 1.2
+        "beta": 1.3
     },
     "lstm_model": {
         "input_size": 1,
@@ -92,7 +94,7 @@
         "price_data": "data/2014_DK2_spot_prices.csv"
     },
     "anti_cartel": {
-        "mechanism_type": "detection",
+        "mechanism_type": "ceiling",
         "monitoring_window": 100,
         "similarity_threshold": 0.85,
         "penalty_factor": 1.5,

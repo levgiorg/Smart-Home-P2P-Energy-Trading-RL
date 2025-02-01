@@ -10,7 +10,7 @@ import numpy as np
 class RunAnalyzer:
     def __init__(self, base_path="ml-outputs"):
         self.base_path = Path(base_path)
-        self.runs = [d for d in os.listdir(base_path) if d.endswith('v5 runs')]
+        self.runs = [d for d in os.listdir(base_path) if d.startswith('run')]
         self.metrics = {}
         
     def load_run_data(self, run_id):

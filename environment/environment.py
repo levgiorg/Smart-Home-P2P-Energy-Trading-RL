@@ -174,43 +174,70 @@ class Environment:
 
     def step(self, actions, A=0.14 * 1000 / ((1 - 32) * 5 / 9)):
         """
-        Advances the environment by one time step based on the actions for each house.
-        Includes anti-cartel mechanism checks and penalties.
+        Execute one time step within the environment.
         
         Args:
             actions: Tensor of shape [num_houses, 3] containing [e_t, a_batt, selling_price] for each house
+            A: HVAC system thermal mass coefficient
+            
         Returns:
-            state: Current state after taking the actions
-            rewards: List of rewards for each house (including anti-cartel penalties)
+            state: Current state after taking actions
+            rewards: List of rewards for each house
             done: Boolean indicating if episode is finished
             infos: Dictionary containing additional information about the step
         """
-        # Unscale actions
+        # SECTION 1: Process initial actions and set up tracking
+        # Convert actions from normalized space to actual values
         actions = self.utilities.unscaler(actions)
         
-        # Extract and update selling prices (normalized relative to grid price)
-        for i in range(self.num_houses):
-            self.selling_prices[i] = min(actions[i, 2].item() * self.price, self.price)
-        
-        # Initialize tracking variables
-        rewards = []
+        # Initialize tracking dictionaries for various metrics
         infos = {
-            'HVAC_energy_cons': [], 
-            'depreciation': [], 
-            'penalty': [],
-            'trading_profit': [],
-            'energy_bought_p2p': [],
-            'selling_prices': [],
-            'anti_cartel_penalties': []  
+            'HVAC_energy_cons': [],      # Energy consumption from HVAC
+            'depreciation': [],          # Battery depreciation costs
+            'penalty': [],               # Temperature violation penalties
+            'trading_profit': [],        # Profits from P2P energy trading
+            'energy_bought_p2p': [],     # Amount of energy bought P2P
+            'selling_prices': [],        # Final selling prices
+            'anti_cartel_penalties': [], # Penalties from anti-cartel mechanism
+            'grid_prices': float(self.price)  # Current grid price
         }
+        rewards = []  # Will store final rewards for each house
+
+        # SECTION 2: Price Setting with Anti-Cartel Mechanism
+        current_grid_price = self.price
+        self.selling_prices = []
         
-        # Calculate initial energy balance for each house
+        # Get price ceiling if using ceiling mechanism
+        if self.anti_cartel.mechanism_type == 'ceiling':
+            price_ceiling = self.anti_cartel.get_price_ceiling(current_grid_price)
+        else:
+            price_ceiling = float('inf')
+        
+        # Set selling prices for each house with appropriate bounds
+        for i in range(self.num_houses):
+            # Convert normalized action to actual price
+            raw_price = actions[i, 2].item() * current_grid_price
+            
+            if self.anti_cartel.mechanism_type == 'ceiling':
+                # For ceiling mechanism: enforce price must be below ceiling
+                bounded_price = min(max(0, raw_price), price_ceiling)
+            else:
+                # For other mechanisms: allow prices up to grid price
+                bounded_price = min(max(0, raw_price), current_grid_price)
+            
+            self.selling_prices.append(bounded_price)
+        
+        # SECTION 3: Calculate Energy Balance for Each House
         house_energy_status = []
         for i in range(self.num_houses):
+            # Get HVAC energy consumption from action
             e_t = actions[i, 0].item()
+            # Calculate total consumption including base load
             total_consumption = self.power_demand[i] + 1e-3 * e_t
+            # Get available solar power
             available_power = self.sun_power[i]
             
+            # Calculate energy surplus or deficit
             excess = max(0, available_power - total_consumption)
             deficit = max(0, total_consumption - available_power)
             
@@ -218,14 +245,18 @@ class Environment:
                 'house_id': i,
                 'excess': excess,
                 'deficit': deficit,
-                'selling_price': self.selling_prices[i],
+                'selling_price': self.selling_prices[i]
             })
         
-        # Identifies houses that have excess energy to sell, those needing energy, sorts sellers by price, 
-        # and initializes a record of transactions for each house.
-        sellers = [h for h in house_energy_status if h['excess'] > 0]
+        # SECTION 4: P2P Energy Trading
+        # Sort houses into buyers and sellers
+        sellers = sorted(
+            [h for h in house_energy_status if h['excess'] > 0],
+            key=lambda x: x['selling_price']  # Sort by price ascending
+        )
         buyers = [h for h in house_energy_status if h['deficit'] > 0]
-        sellers.sort(key=lambda x: x['selling_price'])
+        
+        # Track all transactions
         transactions = {i: [] for i in range(self.num_houses)}
         
         # Match buyers with sellers
@@ -240,55 +271,66 @@ class Environment:
                 seller_id = seller['house_id']
                 selling_price = seller['selling_price']
                 
+                # Only trade if selling price is beneficial
                 if selling_price < self.price:
+                    # Calculate energy and cost for this transaction
                     energy_traded = min(remaining_demand, seller['excess'])
                     transaction_cost = energy_traded * selling_price * (1 + self.grid_fee)
                     
+                    # Record transaction
                     transactions[buyer_id].append({
                         'seller_id': seller_id,
                         'amount': energy_traded,
                         'cost': transaction_cost
                     })
                     
+                    # Update remaining quantities
                     remaining_demand -= energy_traded
                     seller['excess'] -= energy_traded
         
-        # Process updates and calculate rewards for each house
+        # SECTION 5: Process Updates and Calculate Rewards
         for i in range(self.num_houses):
+            # Get actions for this house
             e_t = actions[i, 0].item()
             a_batt = actions[i, 1].item()
             
-            # Update inside temperature
+            # Update temperature state
             self.inside_temperatures[i] = self.epsilon * self.inside_temperatures[i] + \
                 (1 - self.epsilon) * (self.ambient_temperature - (self.eta_hvac / A) * e_t)
             
             # Update battery state
             if a_batt > 0:
-                self.batteries[i] = min(self.batteries[i] + self.n_c * a_batt, self.battery_capacity_max)
+                self.batteries[i] = min(
+                    self.batteries[i] + self.n_c * a_batt, 
+                    self.battery_capacity_max
+                )
             else:
-                self.batteries[i] = max(self.batteries[i] + a_batt / self.n_d, self.battery_capacity_min)
+                self.batteries[i] = max(
+                    self.batteries[i] + a_batt / self.n_d, 
+                    self.battery_capacity_min
+                )
             
-            # Calculate energy transactions and costs
+            # Calculate energy costs and trading profits
             house_status = next(h for h in house_energy_status if h['house_id'] == i)
             total_consumption = house_status['deficit'] if house_status['deficit'] > 0 else 0
             energy_from_p2p = sum(t['amount'] for t in transactions[i])
             energy_from_grid = max(0, total_consumption - energy_from_p2p)
             
-            # Calculate trading profits
+            # Calculate trading profits as seller
             trading_profit = 0
             for buyer_id, buyer_transactions in transactions.items():
                 for t in buyer_transactions:
                     if t['seller_id'] == i:
                         trading_profit += t['cost'] / (1 + self.grid_fee)
             
-            # Calculate costs and penalties
-            hvac_energy_cons = (
+            # Calculate costs
+            hvac_energy_cost = (
                 self.price * energy_from_grid +
                 sum(t['cost'] for t in transactions[i])
             )
-            depreciation = self.depreciation_coeff * abs(a_batt)
+            battery_depreciation = self.depreciation_coeff * abs(a_batt)
             
-            # Temperature penalty
+            # Calculate temperature penalty
             if self.inside_temperatures[i] >= self.t_max:
                 temp_penalty = self.inside_temperatures[i] - self.t_max
             elif self.inside_temperatures[i] <= self.t_min:
@@ -296,32 +338,31 @@ class Environment:
             else:
                 temp_penalty = 0
             
-            # Calculate base reward
-            reward = -self.beta * (hvac_energy_cons + depreciation + temp_penalty) + trading_profit
-            rewards.append(reward)
+            # Calculate final reward for this house
+            reward = -self.beta * (hvac_energy_cost + battery_depreciation + temp_penalty) + trading_profit
             
-            # Store info
-            infos['HVAC_energy_cons'].append(hvac_energy_cons)
-            infos['depreciation'].append(depreciation)
+            # Store all metrics
+            rewards.append(reward)
+            infos['HVAC_energy_cons'].append(hvac_energy_cost)
+            infos['depreciation'].append(battery_depreciation)
             infos['penalty'].append(temp_penalty)
             infos['trading_profit'].append(trading_profit)
             infos['energy_bought_p2p'].append(energy_from_p2p)
             infos['selling_prices'].append(self.selling_prices[i])
-            
-        infos['grid_prices'] = float(self.price)
         
-        # Apply anti-cartel mechanism if active
-        if hasattr(self, 'anti_cartel') and self.anti_cartel.is_active():
-            penalties = self.anti_cartel.calculate_penalties(self.selling_prices, self.price)
+        # SECTION 6: Apply Anti-Cartel Mechanism and Finalize Step
+        if self.anti_cartel.is_active():
+            penalties = self.anti_cartel.calculate_penalties(self.selling_prices, current_grid_price)
             rewards = [r - p for r, p in zip(rewards, penalties)]
             infos['anti_cartel_penalties'] = penalties
-            self.anti_cartel.update_price_history(self.selling_prices)
+            
+            if self.anti_cartel.mechanism_type == 'detection':
+                self.anti_cartel.update_price_history(self.selling_prices)
         
-        # Update time and check if done
+        # Update time and environment state
         self.time += 1
         self.done = self.time >= self.num_time_steps
         
-        # Update environment state if not done
         if not self.done and self.dynamic:
             self._update_dynamic_variables()
         

@@ -1,10 +1,11 @@
 import matplotlib.pyplot as plt
 
 from enhanced_analyzer import EnhancedRunAnalyzer
+from cartel_analyzer import AntiCartelAnalyzer
 
 
-def main():
-    analyzer = EnhancedRunAnalyzer("ml-outputs/7000 episodes : 10 houses")
+def Enhanced_main():
+    analyzer = EnhancedRunAnalyzer("ml-outputs")
     
     # Plot detailed comparison of top runs
     analyzer.plot_top_runs_detailed()
@@ -14,5 +15,22 @@ def main():
     
     plt.show()
 
+def Cartel_main():
+    # Initialize analyzer with your output directory
+    analyzer = AntiCartelAnalyzer("ml-outputs")
+    
+    # Generate comparison plots
+    fig, metrics_df = analyzer.compare_mechanisms()
+    
+    # Print statistical analysis
+    analyzer.print_statistical_analysis()
+    
+    # Display metrics comparison
+    print("\n=== Final Metrics Comparison ===")
+    print(metrics_df)
+    
+    # Show plots
+    plt.show()
+
 if __name__ == "__main__":
-    main()
+    Cartel_main()
