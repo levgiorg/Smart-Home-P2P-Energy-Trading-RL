@@ -1,3 +1,6 @@
 .git
 *.pyc
 newfile.yaml
+test runs/
+cartel_comparison.png
+ml-outputs/

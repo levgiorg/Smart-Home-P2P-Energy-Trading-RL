@@ -147,7 +147,7 @@ class AntiCartelAnalyzer:
         return processed_metrics
 
     def compare_mechanisms(self):
-        """Compare mechanisms with improved visualization"""
+        """Compare mechanisms with improved visualization - 2x2 grid"""
         mechanism_data = {
             name: self.calculate_mechanism_metrics(runs)
             for name, runs in self.mechanism_groups.items()
@@ -156,7 +156,7 @@ class AntiCartelAnalyzer:
         
         # Set up the plot style
         plt.style.use('seaborn-v0_8')
-        fig, axs = plt.subplots(3, 2, figsize=(15, 20))
+        fig, axs = plt.subplots(2, 2, figsize=(15, 13))  # Changed from 3x2 to 2x2
         colors = {
             'detection': '#2E86C1',  # Blue
             'ceiling': '#28B463',    # Green
@@ -248,40 +248,8 @@ class AntiCartelAnalyzer:
         ax.set_ylabel('Energy Amount')
         ax.legend()
         
-        # Plot penalties distribution
-        ax = axs[2, 0]
-        box_data = []
-        labels = []
-        for name, data in mechanism_data.items():
-            if 'penalties' in data and len(data['penalties']) > 0:
-                penalties = np.mean(data['penalties'], axis=1)
-                if len(penalties) > 0:
-                    box_data.append(penalties)
-                    labels.append(name)
-        
-        if box_data:
-            ax.boxplot(box_data, labels=labels)
-            ax.set_title('Distribution of Anti-Cartel Penalties')
-            ax.set_ylabel('Penalty Amount')
-        
-        # Final metrics comparison
-        ax = axs[2, 1]
-        metrics = {
-            name: {
-                'Avg Reward': np.mean(data['rewards'][:, -100:]) if 'rewards' in data else 0,
-                'Price Ratio': np.mean(data['price_ratios'][:, -100:]) if 'price_ratios' in data else 0,
-                'Trading Profit': np.mean(data['trading_profits']) if 'trading_profits' in data else 0,
-                'P2P Energy': np.mean(data['p2p_energy']) if 'p2p_energy' in data else 0
-            } for name, data in mechanism_data.items()
-        }
-        
-        metrics_df = pd.DataFrame(metrics).T
-        metrics_df.plot(kind='bar', ax=ax)
-        ax.set_title('Final Performance Metrics')
-        ax.tick_params(axis='x', rotation=45)
-        
         plt.tight_layout()
-        return fig, metrics_df
+        return fig
 
 
     def print_statistical_analysis(self):

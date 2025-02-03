@@ -20,15 +20,14 @@ def Cartel_main():
     analyzer = AntiCartelAnalyzer("ml-outputs")
     
     # Generate comparison plots
-    fig, metrics_df = analyzer.compare_mechanisms()
+    fig = analyzer.compare_mechanisms()
     
     # Print statistical analysis
     analyzer.print_statistical_analysis()
     
-    # Display metrics comparison
-    print("\n=== Final Metrics Comparison ===")
-    print(metrics_df)
-    
+    # Save plot to file in this directory 
+    fig.savefig("cartel_comparison.png")
+
     # Show plots
     plt.show()
 
