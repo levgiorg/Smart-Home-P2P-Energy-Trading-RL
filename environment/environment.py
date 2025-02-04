@@ -325,7 +325,7 @@ class Environment:
             
             # Calculate costs
             hvac_energy_cost = (
-                self.price * energy_from_grid +
+                1e-3*self.price * energy_from_grid +
                 sum(t['cost'] for t in transactions[i])
             )
             battery_depreciation = self.depreciation_coeff * abs(a_batt)

@@ -3,7 +3,7 @@
         "time_step_size": 3600,
         "num_hours": 168,
         "num_time_steps": 168,
-        "device": "cpu"
+        "device": "cuda"
     },
     "rl_agent": {
         "num_episodes": 7000,
