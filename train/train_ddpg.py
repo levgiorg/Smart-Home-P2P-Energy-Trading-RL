@@ -124,6 +124,10 @@ def train_ddpg(config_path='hyperparameters.json', model_name='ddpg_', enable_sa
             # Move to the next state
             state = next_state
 
+        # At the end of the episode, calculate the average (per-step) penalty.
+        num_steps = config.get('simulation', 'num_hours')
+        avg_penalty = penalty_per_house / num_steps
+        
         # Log episode metrics
         bookkeeper.log_episode(
             episode=episode,
@@ -131,7 +135,7 @@ def train_ddpg(config_path='hyperparameters.json', model_name='ddpg_', enable_sa
             rewards_per_house=rewards_per_house.tolist(),
             HVAC_energy_cons=hvac_consumption_per_house.tolist(),
             depreciation=depreciation_per_house.tolist(),
-            penalty=penalty_per_house.tolist(),
+            penalty=avg_penalty.tolist(),  # Now logging the average penalty per step
             trading_profit=trading_profit_per_house.tolist(),
             energy_bought_p2p=energy_bought_p2p_per_house.tolist(),
             selling_prices=selling_prices_per_house.tolist(),

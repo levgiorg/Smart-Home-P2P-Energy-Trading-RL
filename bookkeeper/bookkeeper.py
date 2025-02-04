@@ -31,12 +31,12 @@ class BookKeeper:
         self.metrics_config = {
             'rewards_per_house': {
                 'title': 'Rewards per House',
-                'ylabel': 'Reward',
+                'ylabel': 'Reward (points)',
                 'filename': 'rewards_per_house_plot.png'
             },
             'temperatures': {
                 'title': 'Temperature Control per House',
-                'ylabel': 'Temperature',
+                'ylabel': 'Temperature (°C)',
                 'filename': 'temperatures_plot.png'
             },
             'HVAC_energy_cons': {
@@ -46,17 +46,17 @@ class BookKeeper:
             },
             'depreciation': {
                 'title': 'Battery Depreciation per House',
-                'ylabel': 'Depreciation Cost',
+                'ylabel': 'Depreciation Cost (€)',
                 'filename': 'battery_depreciation.png'
             },
             'penalty': {
                 'title': 'Temperature Deviation Penalty per House',
-                'ylabel': 'Penalty',
+                'ylabel': 'Penalty (Temperature Deviation (°C))',
                 'filename': 'temperature_penalty.png'
             },
             'trading_profit': {
                 'title': 'Trading Profit per House',
-                'ylabel': 'Profit',
+                'ylabel': 'Profit (€)',
                 'filename': 'trading_profit.png'
             },
             'energy_bought_p2p': {
@@ -66,17 +66,17 @@ class BookKeeper:
             },
             'grid_prices': {
                 'title': 'Grid Energy Prices',
-                'ylabel': 'Price per kWh',
-                'filename': 'grid_prices.png'},
+                'ylabel': 'Price (€/kWh)',
+                'filename': 'grid_prices.png'
+            },
             'selling_prices': {
                 'title': 'Energy Selling Prices per House',
-                'ylabel': 'Price per kWh',
+                'ylabel': 'Price (€/kWh)',
                 'filename': 'selling_prices.png'
             },
-            # Add the score metric:
             'score': {
                 'title': 'Total Episode Score',
-                'ylabel': 'Score',
+                'ylabel': 'Score (points)',
                 'filename': 'score.png'
             }
         }
