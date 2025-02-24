@@ -32,4 +32,4 @@ def Cartel_main():
     plt.show()
 
 if __name__ == "__main__":
-    Enhanced_main()
+    Cartel_main()

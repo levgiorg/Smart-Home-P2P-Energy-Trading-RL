@@ -18,7 +18,7 @@ class Environment:
         self.anti_cartel = AntiCartelMechanism()
 
         # Base feature dimensions per house (constant)
-        self.BASE_STATE_DIM_PER_HOUSE = 9  # Fixed number of base features
+        self.BASE_STATE_DIM_PER_HOUSE = 7  # Fixed number of base features
         # Each house's state includes other houses' selling prices
         self.STATE_DIM_PER_HOUSE = self.BASE_STATE_DIM_PER_HOUSE + self.num_houses
         
@@ -459,11 +459,9 @@ class Environment:
                 self.inside_temperatures[i],
                 self.ambient_temperature,
                 self.sun_power[i],
-                self.sun_power_pred[i],
                 self.price,
                 self.batteries[i],
                 self.power_demand[i],
-                self.power_demand_pred[i],
                 self.hour_of_day
             ]
             # Add other houses' selling prices to the state

@@ -11,7 +11,7 @@ class Actor(nn.Module):
     
     The network automatically adjusts its input and output dimensions based on:
     - Number of houses from config
-    - Base state features per house (9 fixed features + num_houses for selling prices)
+    - Base state features per house (8 fixed features + num_houses for selling prices)
     - Actions per house (3: e_t, a_batt, selling_price)
     """
     def __init__(self, input_dims, n_actions, config: Config):
@@ -20,7 +20,7 @@ class Actor(nn.Module):
         self.num_houses = config.get('environment', 'num_houses')
         
         # Calculate dimensions
-        self.base_features_per_house = 9  # Fixed number of base features per house
+        self.base_features_per_house = 7  # Fixed number of base features per house
         self.features_per_house = self.base_features_per_house + self.num_houses  # Add selling prices
         self.actions_per_house = 3  # e_t, a_batt, selling_price
         

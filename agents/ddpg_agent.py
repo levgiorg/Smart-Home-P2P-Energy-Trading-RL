@@ -20,7 +20,7 @@ class DDPGAgent:
         self.num_houses = config.get('environment', 'num_houses')
         
         # Calculate expected dimensions
-        self.base_features_per_house = 9  # Fixed number of base features
+        self.base_features_per_house = 7  # Fixed number of base features
         self.features_per_house = self.base_features_per_house + self.num_houses  # Add selling prices
         self.actions_per_house = 3  # e_t, a_batt, selling_price
         

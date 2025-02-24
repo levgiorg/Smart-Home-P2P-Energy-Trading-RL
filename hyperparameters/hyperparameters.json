@@ -3,10 +3,10 @@
         "time_step_size": 3600,
         "num_hours": 168,
         "num_time_steps": 168,
-        "device": "cuda"
+        "device": "cpu"
     },
     "rl_agent": {
-        "num_episodes": 7000,
+        "num_episodes": 10,
         "epsilon": 1,
         "epsilon_decay": 0.997,
         "learning_rate": 1e-06,
@@ -45,7 +45,7 @@
         "battery_capacity_min": 0.6,
         "battery_capacity_max": 10.0,
         "action_dim_per_house": 3,
-        "state_dim_per_house": 19,
+        "state_dim_per_house": 17,
         "hvac_action_bounds": [
             -1,
             1
@@ -59,7 +59,7 @@
             1
         ],
         "grid_fee": 0.018,
-        "total_state_dim": 190,
+        "total_state_dim": 170,
         "total_action_dim": 30,
         "price_ceiling": {
             "enabled": true,
