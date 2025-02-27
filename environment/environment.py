@@ -17,8 +17,20 @@ class Environment:
         self.utilities = Utilities(num_houses=self.num_houses)
         self.anti_cartel = AntiCartelMechanism()
 
-        # Base feature dimensions per house (constant)
-        self.BASE_STATE_DIM_PER_HOUSE = 7  # Fixed number of base features
+        # Define state components - keys are component names, values are functions to get component values
+        self.state_components = {
+            "inside_temperature": lambda i: self.inside_temperatures[i],
+            "ambient_temperature": lambda i: self.ambient_temperature,
+            "sun_power": lambda i: self.sun_power[i],
+            "price": lambda i: self.price,
+            "battery": lambda i: self.batteries[i],
+            "power_demand": lambda i: self.power_demand[i],
+            "hour_of_day": lambda i: self.hour_of_day,
+        }
+        
+        # Calculate state dimensions based on components (excluding selling prices)
+        self.BASE_STATE_DIM_PER_HOUSE = len(self.state_components)
+        
         # Each house's state includes other houses' selling prices
         self.STATE_DIM_PER_HOUSE = self.BASE_STATE_DIM_PER_HOUSE + self.num_houses
         
@@ -48,13 +60,13 @@ class Environment:
         self.battery_capacity_max = config.get('environment', 'battery_capacity_max')
         self.num_hours = config.get('simulation', 'num_hours')
         self.random_seed = config.get('simulation', 'random_seed')
-        self.epsilon = config.get('environment', 'epsilon')
-        self.eta_hvac = config.get('environment', 'eta_hvac')
-        self.n_c = config.get('environment', 'n_c')
-        self.n_d = config.get('environment', 'n_d')
+        self.temperature_comfort_penalty_weight = config.get('environment', 'temperature_comfort_penalty_weight')
+        self.hvac_efficiency = config.get('environment', 'hvac_efficiency')
+        self.battery_charging_efficiency = config.get('environment', 'battery_charging_efficiency')
+        self.battery_discharging_efficiency = config.get('environment', 'battery_discharging_efficiency')
         self.depreciation_coeff = config.get('cost_model', 'depreciation_coeff')
-        self.t_max = config.get('environment', 't_max')
-        self.t_min = config.get('environment', 't_min')
+        self.temperature_max = config.get('environment', 'temperature_max')
+        self.temperature_min = config.get('environment', 'temperature_min')
         self.beta = config.get('reward', 'beta')
         self.num_time_steps = self.num_hours
 
@@ -89,6 +101,51 @@ class Environment:
         # Initialize time and done flag
         self.time = 0
         self.done = False
+        
+    def add_state_component(self, name, value_function):
+        """
+        Add a new component to the state representation.
+        
+        Args:
+            name (str): Name of the component
+            value_function (callable): Function that takes house index and returns component value
+        """
+        self.state_components[name] = value_function
+        
+        # Recalculate dimensions
+        self._recalculate_dimensions()
+        
+    def remove_state_component(self, name):
+        """
+        Remove a component from the state representation.
+        
+        Args:
+            name (str): Name of the component to remove
+        """
+        if name in self.state_components:
+            del self.state_components[name]
+            
+            # Recalculate dimensions
+            self._recalculate_dimensions()
+    
+    def _recalculate_dimensions(self):
+        """Recalculate state dimensions after adding or removing components"""
+        config = Config()
+        
+        # Update base state dimension
+        self.BASE_STATE_DIM_PER_HOUSE = len(self.state_components)
+        
+        # Update per-house state dimension (base + selling prices)
+        self.STATE_DIM_PER_HOUSE = self.BASE_STATE_DIM_PER_HOUSE + self.num_houses
+        
+        # Calculate total state dimension
+        self._state_dim = self.STATE_DIM_PER_HOUSE * self.num_houses
+        
+        # Update config with new dimensions
+        config.set('environment', 'state_dim_per_house', self.STATE_DIM_PER_HOUSE)
+        config.set('environment', 'total_state_dim', self._state_dim)
+        
+        print(f"State dimensions recalculated: {self.STATE_DIM_PER_HOUSE} per house, {self._state_dim} total")
 
     @property
     def state_dim(self):
@@ -295,18 +352,18 @@ class Environment:
             a_batt = actions[i, 1].item()
             
             # Update temperature state
-            self.inside_temperatures[i] = self.epsilon * self.inside_temperatures[i] + \
-                (1 - self.epsilon) * (self.ambient_temperature - (self.eta_hvac / A) * e_t)
+            self.inside_temperatures[i] = self.temperature_comfort_penalty_weight * self.inside_temperatures[i] + \
+                (1 - self.temperature_comfort_penalty_weight) * (self.ambient_temperature - (self.hvac_efficiency / A) * e_t)
             
             # Update battery state
             if a_batt > 0:
                 self.batteries[i] = min(
-                    self.batteries[i] + self.n_c * a_batt, 
+                    self.batteries[i] + self.battery_charging_efficiency * a_batt, 
                     self.battery_capacity_max
                 )
             else:
                 self.batteries[i] = max(
-                    self.batteries[i] + a_batt / self.n_d, 
+                    self.batteries[i] + a_batt / self.battery_discharging_efficiency, 
                     self.battery_capacity_min
                 )
             
@@ -331,10 +388,10 @@ class Environment:
             battery_depreciation = self.depreciation_coeff * abs(a_batt)
             
             # Calculate temperature penalty
-            if self.inside_temperatures[i] >= self.t_max:
-                temp_penalty = self.inside_temperatures[i] - self.t_max
-            elif self.inside_temperatures[i] <= self.t_min:
-                temp_penalty = self.t_min - self.inside_temperatures[i]
+            if self.inside_temperatures[i] >= self.temperature_max:
+                temp_penalty = self.inside_temperatures[i] - self.temperature_max
+            elif self.inside_temperatures[i] <= self.temperature_min:
+                temp_penalty = self.temperature_min - self.inside_temperatures[i]
             else:
                 temp_penalty = 0
             
@@ -455,15 +512,9 @@ class Environment:
         """Returns the current state of the environment for all houses."""
         state = []
         for i in range(self.num_houses):
-            house_state = [
-                self.inside_temperatures[i],
-                self.ambient_temperature,
-                self.sun_power[i],
-                self.price,
-                self.batteries[i],
-                self.power_demand[i],
-                self.hour_of_day
-            ]
+            # Gather all state components dynamically
+            house_state = [component_func(i) for component_func in self.state_components.values()]
+            
             # Add other houses' selling prices to the state
             house_state.extend([self.selling_prices[j] for j in range(self.num_houses)])
             state.extend(house_state)

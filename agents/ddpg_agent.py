@@ -19,21 +19,23 @@ class DDPGAgent:
         # Get number of houses from config
         self.num_houses = config.get('environment', 'num_houses')
         
-        # Calculate expected dimensions
-        self.base_features_per_house = 7  # Fixed number of base features
-        self.features_per_house = self.base_features_per_house + self.num_houses  # Add selling prices
-        self.actions_per_house = 3  # e_t, a_batt, selling_price
+        # Get dimensions from environment or config
+        self.base_features_per_house = config.get('environment', 'state_dim_per_house') - self.num_houses
+        self.features_per_house = config.get('environment', 'state_dim_per_house')
+        self.actions_per_house = config.get('environment', 'action_dim_per_house')
         
+        # Ensure dimensions from parameters match expected dimensions
         expected_state_dim = self.num_houses * self.features_per_house
         expected_action_dim = self.num_houses * self.actions_per_house
         
-        # Verify dimensions match expected
         if state_dim != expected_state_dim:
             print(f"Warning: State dimension mismatch. Got {state_dim}, expected {expected_state_dim}")
+            print(f"Using dimension from config: {expected_state_dim}")
             state_dim = expected_state_dim
             
         if action_dim != expected_action_dim:
             print(f"Warning: Action dimension mismatch. Got {action_dim}, expected {expected_action_dim}")
+            print(f"Using dimension from config: {expected_action_dim}")
             action_dim = expected_action_dim
 
         # Load other hyperparameters
@@ -70,7 +72,7 @@ class DDPGAgent:
         self.normalizer = Normalizer(self.state_dim, self.device)
         
         # Initialize noise for action exploration (only for e_t and a_batt)
-        num_houses = self.action_dim // 3
+        num_houses = self.action_dim // self.actions_per_house
         self.noise = OUNoise(num_houses * 2)  # Only for e_t and a_batt actions
 
         # Initialize target networks
@@ -82,19 +84,19 @@ class DDPGAgent:
             self.actor.load_state_dict(checkpoint['actor_state_dict'])
             self.critic.load_state_dict(checkpoint['critic_state_dict'])
 
-
     def select_action(self, state: torch.Tensor, add_noise: bool = True):
         self.actor.eval()
         with torch.no_grad():
             action = self.actor(state).cpu()  # Shape: [batch_size, n_actions]
         self.actor.train()
         
-        # Ensure action has correct shape [num_houses, 3] (e_t, a_batt, selling_price)
-        num_houses = self.action_dim // 3  # Since each house now has 3 actions
+        # Ensure action has correct shape [num_houses, actions_per_house]
+        # Instead of hardcoding the actions_per_house as 3
+        num_houses = self.action_dim // self.actions_per_house
         if action.dim() == 1:  # If action is [action_dim]
-            action = action.view(num_houses, 3)
+            action = action.view(num_houses, self.actions_per_house)
         elif action.dim() == 2 and action.shape[0] == 1:  # If action is [1, action_dim]
-            action = action.view(num_houses, 3)
+            action = action.view(num_houses, self.actions_per_house)
             
         if add_noise:
             # Generate noise only for e_t and a_batt actions
@@ -110,7 +112,6 @@ class DDPGAgent:
             action[:, 2].clamp_(0, 1)
             
         return action
-
 
     def optimize_model(self):
         if len(self.memory) < self.batch_size:
@@ -165,7 +166,6 @@ class DDPGAgent:
         # Soft update target networks
         self.soft_update(self.target_actor, self.actor)
         self.soft_update(self.target_critic, self.critic)
-
 
     def soft_update(self, target_net: torch.nn.Module, source_net: torch.nn.Module):
         for target_param, param in zip(target_net.parameters(), source_net.parameters()):

@@ -5,7 +5,7 @@ from cartel_analyzer import AntiCartelAnalyzer
 
 
 def Enhanced_main():
-    analyzer = EnhancedRunAnalyzer("ml-outputs")
+    analyzer = EnhancedRunAnalyzer("ml-outputs2")
     
     # Plot detailed comparison of top runs
     analyzer.plot_top_runs_detailed()
@@ -17,7 +17,7 @@ def Enhanced_main():
 
 def Cartel_main():
     # Initialize analyzer with your output directory
-    analyzer = AntiCartelAnalyzer("ml-outputs")
+    analyzer = AntiCartelAnalyzer("ml-outputs2")
     
     # Generate comparison plots
     fig = analyzer.compare_mechanisms()

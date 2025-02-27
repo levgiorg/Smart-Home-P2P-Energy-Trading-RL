@@ -99,8 +99,8 @@ def run_experiments():
             config.set('environment', 'grid_fee', fee)
             config.set('environment', 'comfort_penalty', comfort_p)
             config.set('cost_model', 'price_penalty', price_p)
-            config.set('environment', 'n_c', n_c)
-            config.set('environment', 'n_d', n_d)
+            config.set('environment', 'battery_charging_efficiency', n_c)
+            config.set('environment', 'battery_discharging_efficiency', n_d)
             print(f"\nRunning multi-objective experiment with {mechanism_name}, beta={beta}, fee={fee}")
             main()
 
@@ -148,8 +148,8 @@ def run_experiments():
             config.set('environment', 'num_houses', 10)
             config.set('environment', 'battery_capacity_min', cap_min)
             config.set('environment', 'battery_capacity_max', cap_max)
-            config.set('environment', 'n_c', n_c)
-            config.set('environment', 'n_d', n_d)
+            config.set('environment', 'battery_charging_efficiency', n_c)
+            config.set('environment', 'battery_discharging_efficiency', n_d)
             config.set('environment', 'initial_battery_charge', initial_charge)
             print(f"\nRunning advanced battery with {mechanism_name}, cap_max={cap_max}, efficiency={n_c}")
             main()
@@ -159,8 +159,8 @@ def run_experiments():
             for key, value in anti_cartel_config.items():
                 config.set('anti_cartel', key, value)
             config.set('environment', 'num_houses', 10)
-            config.set('environment', 't_min', t_min)
-            config.set('environment', 't_max', t_max)
+            config.set('environment', 'temperature_min', t_min)
+            config.set('environment', 'temperature_max', t_max)
             config.set('environment', 'comfort_penalty', comfort_penalty)
             config.set('environment', 'hvac_efficiency', hvac_efficiency)
             print(f"\nRunning advanced comfort with {mechanism_name}, range={t_min}-{t_max}, hvac_eff={hvac_efficiency}")
@@ -205,4 +205,4 @@ def main():
     train_ddpg()
 
 if __name__ == "__main__":
-    run_experiments()
+    main()

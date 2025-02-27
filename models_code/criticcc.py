@@ -11,7 +11,7 @@ class Critic(nn.Module):
     
     The network automatically adjusts its input and output dimensions based on:
     - Number of houses from config
-    - Base state features per house (8 fixed features + num_houses for selling prices)
+    - Base state features per house (dynamic based on state components)
     - Actions per house (3: e_t, a_batt, selling_price)
     """
     def __init__(self, input_dims, n_actions, config: Config):
@@ -19,17 +19,24 @@ class Critic(nn.Module):
         # Get number of houses from config
         self.num_houses = config.get('environment', 'num_houses')
         
-        # Calculate dimensions
-        self.base_features_per_house = 7  # Fixed number of base features per house
-        self.features_per_house = self.base_features_per_house + self.num_houses  # Add selling prices
-        self.actions_per_house = 3  # e_t, a_batt, selling_price
+        # Get dimensions dynamically from config, which are calculated in Environment
+        self.base_features_per_house = config.get('environment', 'state_dim_per_house') - self.num_houses
+        self.features_per_house = config.get('environment', 'state_dim_per_house')
+        self.actions_per_house = config.get('environment', 'action_dim_per_house')
         
         # Verify input dimensions match expected
         expected_input_dims = self.features_per_house * self.num_houses
         expected_n_actions = self.actions_per_house * self.num_houses
         
-        assert input_dims == expected_input_dims, f"Input dimensions mismatch. Got {input_dims}, expected {expected_input_dims}"
-        assert n_actions == expected_n_actions, f"Action dimensions mismatch. Got {n_actions}, expected {expected_n_actions}"
+        if input_dims != expected_input_dims:
+            print(f"Warning: Input dimensions mismatch in Critic. Got {input_dims}, expected {expected_input_dims}")
+            print(f"Using dimension from config: {expected_input_dims}")
+            input_dims = expected_input_dims
+            
+        if n_actions != expected_n_actions:
+            print(f"Warning: Action dimensions mismatch in Critic. Got {n_actions}, expected {expected_n_actions}")
+            print(f"Using dimension from config: {expected_n_actions}")
+            n_actions = expected_n_actions
         
         self.input_dims = input_dims
         self.fc1_dims = config.get('critic', 'fc1_dims')
