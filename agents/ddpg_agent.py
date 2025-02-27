@@ -141,9 +141,9 @@ class DDPGAgent:
         # State normalizer
         self.normalizer = Normalizer(self.state_dim, self.device)
         
-        # Exploration noise (only for e_t and a_batt actions)
+        # Exploration noise (only for hvac_energy and battery_action actions)
         num_houses = self.action_dim // self.actions_per_house
-        self.noise = OUNoise(num_houses * 2)  # Only for e_t and a_batt actions
+        self.noise = OUNoise(num_houses * 2)  # Only for hvac_energy and battery_action actions
     
     def _load_checkpoint(self, ckpt_path: str) -> None:
         """
@@ -216,13 +216,13 @@ class DDPGAgent:
         Returns:
             Action tensor with added noise
         """
-        # Generate noise only for e_t and a_batt actions
+        # Generate noise only for hvac_energy and battery_action actions
         noise = self.noise.sample()
         
         # Reshape noise to match the first two actions of each house
         noise_reshaped = torch.tensor(noise, dtype=torch.float32).view(num_houses, 2)
         
-        # Add noise only to e_t and a_batt
+        # Add noise only to hvac_energy and battery_action
         action[:, :2] += noise_reshaped
         
         # Ensure selling price stays within bounds [0, 1]

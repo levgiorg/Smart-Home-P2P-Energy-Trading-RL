@@ -22,8 +22,8 @@ class Environment:
     - House State: Inside temperature, ambient temperature, battery level, power generation, 
                   power demand, etc.
     - Actions:
-        1. HVAC adjustment (e_t)
-        2. Battery charge/discharge (a_batt)
+        1. HVAC adjustment (hvac_energy)
+        2. Battery charge/discharge (battery_action)
         3. Setting a selling price (bounded by the grid price)
     
     Over each time step, the environment updates:
@@ -92,12 +92,12 @@ class Environment:
         self.STATE_DIM_PER_HOUSE = self.BASE_STATE_DIM_PER_HOUSE + self.num_houses
         
         # Action dimensions (constant)
-        self.ACTION_DIM_PER_HOUSE = 3  # e_t, a_batt, selling_price
+        self.ACTION_DIM_PER_HOUSE = 3  # hvac_energy, battery_action, selling_price
 
         # Action bounds
         self.ACTION_BOUNDS = {
-            'e_t': self.config.get('environment', 'hvac_action_bounds'),
-            'a_batt': self.config.get('environment', 'battery_action_bounds'),
+            'hvac_energy': self.config.get('environment', 'hvac_action_bounds'),
+            'battery_action': self.config.get('environment', 'battery_action_bounds'),
             'selling_price': [0.5, 0.95]  
         }
 
@@ -295,7 +295,7 @@ class Environment:
         Execute one time step within the environment.
         
         Args:
-            actions: Tensor of shape [num_houses, 3] containing [e_t, a_batt, selling_price] for each house
+            actions: Tensor of shape [num_houses, 3] containing [hvac_energy, battery_action, selling_price] for each house
             A: HVAC system thermal mass coefficient (default derived from physical constants)
             
         Returns:
@@ -419,8 +419,8 @@ class Environment:
         )
         
         # Battery depreciation cost
-        a_batt = actions[house_idx, 1].item()
-        battery_depreciation = self.config.get('cost_model', 'depreciation_coeff') * abs(a_batt)
+        battery_action = actions[house_idx, 1].item()
+        battery_depreciation = self.config.get('cost_model', 'depreciation_coeff') * abs(battery_action)
         
         return {
             'hvac_energy_cost': hvac_energy_cost,
@@ -508,9 +508,9 @@ class Environment:
         house_energy_status = []
         for i in range(self.num_houses):
             # Get HVAC energy consumption from action
-            e_t = actions[i, 0].item()
+            hvac_energy = actions[i, 0].item()
             # Calculate total consumption including base load
-            total_consumption = self.power_demand[i] + 1e-3 * e_t
+            total_consumption = self.power_demand[i] + 1e-3 * hvac_energy
             # Get available solar power
             available_power = self.sun_power[i]
             
@@ -603,14 +603,14 @@ class Environment:
         
         for i in range(self.num_houses):
             # Get actions for this house
-            e_t = actions[i, 0].item()
-            a_batt = actions[i, 1].item()
+            hvac_energy = actions[i, 0].item()
+            battery_action = actions[i, 1].item()
             
             # Update temperature state
-            self._update_temperature(i, e_t, A)
+            self._update_temperature(i, hvac_energy, A)
             
             # Update battery state
-            self._update_battery_state(i, a_batt)
+            self._update_battery_state(i, battery_action)
             
             # Calculate energy costs and trading profits
             energy_metrics = self._calculate_energy_metrics(i, house_energy_status, transactions, actions)
@@ -632,39 +632,39 @@ class Environment:
         
         return rewards
     
-    def _update_temperature(self, house_idx: int, e_t: float, A: float) -> None:
+    def _update_temperature(self, house_idx: int, hvac_energy: float, A: float) -> None:
         """
         Update temperature state for a house based on HVAC action.
         
         Args:
             house_idx: Index of the house
-            e_t: HVAC energy consumption action
+            hvac_energy: HVAC energy consumption action
             A: HVAC system thermal mass coefficient
         """
         weight = self.config.get('environment', 'temperature_comfort_penalty_weight')
         efficiency = self.config.get('environment', 'hvac_efficiency')
         
         self.inside_temperatures[house_idx] = weight * self.inside_temperatures[house_idx] + \
-            (1 - weight) * (self.ambient_temperature - (efficiency / A) * e_t)
+            (1 - weight) * (self.ambient_temperature - (efficiency / A) * hvac_energy)
     
-    def _update_battery_state(self, house_idx: int, a_batt: float) -> None:
+    def _update_battery_state(self, house_idx: int, battery_action: float) -> None:
         """
         Update battery state for a house based on charge/discharge action.
         
         Args:
             house_idx: Index of the house
-            a_batt: Battery action (positive for charging, negative for discharging)
+            battery_action: Battery action (positive for charging, negative for discharging)
         """
-        if a_batt > 0:
+        if battery_action > 0:
             # Charging with efficiency loss
             self.batteries[house_idx] = min(
-                self.batteries[house_idx] + self.config.get('environment', 'battery_charging_efficiency') * a_batt, 
+                self.batteries[house_idx] + self.config.get('environment', 'battery_charging_efficiency') * battery_action, 
                 self.config.get('environment', 'battery_capacity_max')
             )
         else:
             # Discharging with efficiency loss
             self.batteries[house_idx] = max(
-                self.batteries[house_idx] + a_batt / self.config.get('environment', 'battery_discharging_efficiency'), 
+                self.batteries[house_idx] + battery_action / self.config.get('environment', 'battery_discharging_efficiency'), 
                 self.config.get('environment', 'battery_capacity_min')
             )
     
@@ -703,8 +703,8 @@ class Environment:
         )
         
         # Battery depreciation cost
-        a_batt = actions[house_idx, 1].item()
-        battery_depreciation = self.config.get('cost_model', 'depreciation_coeff') * abs(a_batt)
+        battery_action = actions[house_idx, 1].item()
+        battery_depreciation = self.config.get('cost_model', 'depreciation_coeff') * abs(battery_action)
         
         return {
             'hvac_energy_cost': hvac_energy_cost,

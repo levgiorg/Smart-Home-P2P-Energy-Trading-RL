@@ -11,7 +11,7 @@ class Actor(nn.Module):
     The network automatically adjusts its input and output dimensions based on:
     - Number of houses from config
     - Base state features per house (dynamic based on state components)
-    - Actions per house (3: e_t, a_batt, selling_price)
+    - Actions per house (3: hvac_energy, battery_action, selling_price)
     """
     def __init__(self, input_dims, n_actions, config: Config):
         super(Actor, self).__init__()
