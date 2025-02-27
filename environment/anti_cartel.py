@@ -1,4 +1,5 @@
 from collections import deque
+from typing import Dict, List, Optional, Union, Any
 
 import numpy as np
 
@@ -6,52 +7,83 @@ from hyperparameters import Config
 
 
 class AntiCartelMechanism:
+    """
+    Anti-Cartel Mechanism for P2P Energy Trading.
+    
+    Implements different mechanisms to detect and prevent cartel-like behavior 
+    in peer-to-peer energy markets. Supported mechanisms include:
+    
+    1. Detection: Monitors price patterns and penalizes houses that appear to be
+       coordinating their pricing strategies (price-fixing).
+    
+    2. Ceiling: Sets a maximum allowed selling price below the grid price to
+       prevent oligopolistic behavior.
+    
+    3. Null (Disabled): No anti-cartel mechanism is active.
+    """
+    
     def __init__(self):
-        config = Config()
+        """Initialize the anti-cartel mechanism based on configuration."""
+        self.config = Config()
         
-        # Load mechanism type and general parameters
-        self.mechanism_type = config.get('anti_cartel', 'mechanism_type')
+        # Load mechanism type
+        self.mechanism_type = self.config.get('anti_cartel', 'mechanism_type')
         
         if self.mechanism_type is not None:
             # Common parameters
-            self.penalty_factor = config.get('anti_cartel', 'penalty_factor')
+            self.penalty_factor = self.config.get('anti_cartel', 'penalty_factor')
             
+            # Initialize specific mechanism
             if self.mechanism_type == 'detection':
-                # Detection-specific parameters
-                self.monitoring_window = config.get('anti_cartel', 'monitoring_window')
-                self.similarity_threshold = config.get('anti_cartel', 'similarity_threshold')
-                
-                # Enhanced price history tracking
-                self.price_history = deque(maxlen=self.monitoring_window)
-                self.current_episode_prices = []
-                
-                # New parameters for better detection
-                self.min_price_variance = 1e-4  # Minimum acceptable price variance
-                self.price_band_threshold = 0.05  # Maximum allowed price difference (5%)
-                self.sustained_pattern_threshold = int(self.monitoring_window * 0.3)  # Need 30% of window for pattern
-                
-                print(f"Detection mechanism initialized with:")
-                print(f"- Monitoring window: {self.monitoring_window}")
-                print(f"- Similarity threshold: {self.similarity_threshold}")
-                print(f"- Price band threshold: {self.price_band_threshold}")
-            
+                self._initialize_detection_mechanism()
             elif self.mechanism_type == 'ceiling':
-                # Ceiling mechanism parameters
-                # markup_limit now represents the minimum discount from grid price
-                self.markup_limit = config.get('anti_cartel', 'markup_limit')  # e.g., 0.2 means 20% below grid price
-                self.market_elasticity = config.get('anti_cartel', 'market_elasticity')
+                self._initialize_ceiling_mechanism()
             
+            # Log initialization
             print(f"Anti-cartel mechanism initialized with type: {self.mechanism_type}")
         else:
             print("Anti-cartel mechanism disabled - operating in free market mode")
     
-    def is_active(self):
-        """Check if any anti-cartel mechanism is active"""
+    def _initialize_detection_mechanism(self) -> None:
+        """Initialize parameters for the price pattern detection mechanism."""
+        # Load detection parameters
+        self.monitoring_window = self.config.get('anti_cartel', 'monitoring_window')
+        self.similarity_threshold = self.config.get('anti_cartel', 'similarity_threshold')
+        
+        # Enhanced price history tracking
+        self.price_history = deque(maxlen=self.monitoring_window)
+        self.current_episode_prices = []
+        
+        # Parameters for advanced detection
+        self.min_price_variance = 1e-4  # Minimum acceptable price variance
+        self.price_band_threshold = 0.05  # Maximum allowed price difference (5%)
+        self.sustained_pattern_threshold = int(self.monitoring_window * 0.3)  # Need 30% of window for pattern
+        
+        # Log detection parameters
+        print(f"Detection mechanism initialized with:")
+        print(f"- Monitoring window: {self.monitoring_window}")
+        print(f"- Similarity threshold: {self.similarity_threshold}")
+        print(f"- Price band threshold: {self.price_band_threshold}")
+    
+    def _initialize_ceiling_mechanism(self) -> None:
+        """Initialize parameters for the price ceiling mechanism."""
+        # Load ceiling parameters
+        self.markup_limit = self.config.get('anti_cartel', 'markup_limit')
+        self.market_elasticity = self.config.get('anti_cartel', 'market_elasticity')
+    
+    def is_active(self) -> bool:
+        """
+        Check if any anti-cartel mechanism is active.
+        
+        Returns:
+            True if a mechanism is active, False otherwise
+        """
         return self.mechanism_type is not None
         
-    def update_price_history(self, selling_prices, episode_done=False):
+    def update_price_history(self, selling_prices: List[float], episode_done: bool = False) -> None:
         """
-        Update the price history with new selling prices
+        Update the price history with new selling prices.
+        
         Args:
             selling_prices: List of current selling prices for each house
             episode_done: Boolean indicating if the current episode is complete
@@ -69,10 +101,16 @@ class AntiCartelMechanism:
                 self.price_history.append(episode_avg_prices)
                 self.current_episode_prices = []
 
-
-    def calculate_penalties(self, selling_prices, grid_price):
+    def calculate_penalties(self, selling_prices: List[float], grid_price: float) -> List[float]:
         """
-        Main penalty calculation method
+        Calculate penalties for houses based on the active anti-cartel mechanism.
+        
+        Args:
+            selling_prices: List of current selling prices for each house
+            grid_price: Current grid price from the utility
+            
+        Returns:
+            List of penalties for each house
         """
         num_houses = len(selling_prices)
         
@@ -86,14 +124,23 @@ class AntiCartelMechanism:
         
         return [0.0] * num_houses
     
-    def _calculate_detection_penalties(self, selling_prices):
+    def _calculate_detection_penalties(self, selling_prices: List[float]) -> List[float]:
         """
-        Enhanced cartel detection using multiple indicators:
+        Calculate penalties based on cartel-like price pattern detection.
+        
+        Uses multiple detection strategies:
         1. Price correlation between houses
         2. Price variance over time
         3. Price clustering analysis
         4. Sustained pattern detection
+        
+        Args:
+            selling_prices: List of current selling prices for each house
+            
+        Returns:
+            List of penalties for each house
         """
+        # Check if we have enough history for detection
         if len(self.price_history) < self.sustained_pattern_threshold:
             return [0.0] * len(selling_prices)
             
@@ -101,14 +148,37 @@ class AntiCartelMechanism:
         price_history_array = np.array(list(self.price_history))
         num_houses = len(selling_prices)
         
-        # 1. Analyze price movements and correlations
+        # 1. Analyze pairwise price correlations
+        self._analyze_price_correlations(price_history_array, selling_prices, penalties, num_houses)
+        
+        # 2. Analyze global price patterns
+        self._analyze_global_price_patterns(price_history_array, selling_prices, penalties)
+        
+        return penalties
+    
+    def _analyze_price_correlations(
+        self, 
+        price_history: np.ndarray, 
+        selling_prices: List[float], 
+        penalties: List[float], 
+        num_houses: int
+    ) -> None:
+        """
+        Analyze price correlations between pairs of houses and update penalties.
+        
+        Args:
+            price_history: Array of historical prices
+            selling_prices: Current selling prices
+            penalties: List of penalties to update
+            num_houses: Number of houses
+        """
         for i in range(num_houses):
             for j in range(i + 1, num_houses):
-                if i >= price_history_array.shape[1] or j >= price_history_array.shape[1]:
+                if i >= price_history.shape[1] or j >= price_history.shape[1]:
                     continue
                 
-                prices_i = price_history_array[-self.sustained_pattern_threshold:, i]
-                prices_j = price_history_array[-self.sustained_pattern_threshold:, j]
+                prices_i = price_history[-self.sustained_pattern_threshold:, i]
+                prices_j = price_history[-self.sustained_pattern_threshold:, j]
                 
                 # Calculate price statistics
                 mean_i = np.mean(prices_i)
@@ -137,28 +207,41 @@ class AntiCartelMechanism:
                         correlation_penalty = self.penalty_factor * 0.4
                         penalties[i] += correlation_penalty * selling_prices[i]
                         penalties[j] += correlation_penalty * selling_prices[j]
+    
+    def _analyze_global_price_patterns(
+        self, 
+        price_history: np.ndarray, 
+        selling_prices: List[float], 
+        penalties: List[float]
+    ) -> None:
+        """
+        Analyze global price patterns across all houses and update penalties.
         
-        # 2. Analyze global price patterns
+        Args:
+            price_history: Array of historical prices
+            selling_prices: Current selling prices
+            penalties: List of penalties to update
+        """
         if len(self.price_history) >= self.monitoring_window:
-            recent_prices = price_history_array[-self.monitoring_window:]
-            global_mean = np.mean(recent_prices, axis=1)
-            global_std = np.std(recent_prices, axis=1)
+            recent_prices = price_history[-self.monitoring_window:]
+            global_mean = np.mean(recent_prices, axis=1)  # Mean price across houses for each time step
+            global_std = np.std(recent_prices, axis=1)    # Std dev across houses for each time step
             
-            # Check for suspicious global patterns
+            # Check for suspiciously low variation across houses
             if np.mean(global_std) < self.min_price_variance * 2:
                 # All houses moving together with very little variation
                 global_penalty = self.penalty_factor * 0.2
-                penalties = [p + global_penalty * sp for p, sp in zip(penalties, selling_prices)]
+                for i, sp in enumerate(selling_prices):
+                    penalties[i] += global_penalty * sp
         
-        return penalties
-        
-    def get_price_ceiling(self, grid_price):
+    def get_price_ceiling(self, grid_price: float) -> float:
         """
         Calculate the maximum allowed selling price based on current grid price.
         For oligopolistic control, the ceiling is set below grid price.
         
         Args:
             grid_price: Current grid price from the utility
+            
         Returns:
             price_ceiling: Maximum allowed selling price (below grid price)
         """
@@ -175,13 +258,14 @@ class AntiCartelMechanism:
         
         return min(max(price_ceiling, min_ceiling), max_ceiling)
 
-    def _calculate_ceiling_penalties(self, selling_prices, grid_price):
+    def _calculate_ceiling_penalties(self, selling_prices: List[float], grid_price: float) -> List[float]:
         """
         Calculate penalties for houses selling above the oligopolistic price ceiling.
         
         Args:
             selling_prices: List of current selling prices for each house
             grid_price: Current grid price from the utility
+            
         Returns:
             penalties: List of penalties for each house
         """
@@ -197,11 +281,12 @@ class AntiCartelMechanism:
                 
         return penalties
 
-    def get_mechanism_status(self):
+    def get_mechanism_status(self) -> Dict[str, Any]:
         """
-        Get current status of the anti-cartel mechanism
+        Get current status of the anti-cartel mechanism.
+        
         Returns:
-            dict: Status information about the current mechanism
+            Dict with status information about the current mechanism
         """
         status = {
             'type': self.mechanism_type,
