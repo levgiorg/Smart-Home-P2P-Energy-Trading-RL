@@ -5,7 +5,7 @@ import re
 
 
 class MechanismAnalyzer:
-    def __init__(self, base_dir: str = "ml-outputs"):
+    def __init__(self, base_dir: str = "ml-outputs2"):
         self.base_dir = Path(base_dir)
         self.runs = self._find_run_directories()
 

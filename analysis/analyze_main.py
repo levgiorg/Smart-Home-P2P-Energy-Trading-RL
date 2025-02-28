@@ -12,6 +12,9 @@ def Enhanced_main():
     
     # Print detailed analysis
     analyzer.print_detailed_analysis()
+
+    # Save plot to file in this directory
+    plt.savefig("enhanced_comparison.png")
     
     plt.show()
 
@@ -32,4 +35,4 @@ def Cartel_main():
     plt.show()
 
 if __name__ == "__main__":
-    Cartel_main()
+    Enhanced_main()
