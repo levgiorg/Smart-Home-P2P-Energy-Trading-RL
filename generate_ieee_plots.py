@@ -382,7 +382,7 @@ def plot_temperature_control(data_by_mechanism):
     ax.set_title("Indoor Temperature Control with DDPG", fontsize=10)
     ax.set_xlabel("Hour of Day", fontsize=9)
     ax.set_ylabel("Temperature (°C)", fontsize=9)
-    ax.set_xticks(np.arange(0, 24, 6))
+    ax.set_xticks(np.arange(0, 25, 6))
     ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
     ax.legend(loc='best', fontsize=8)
     
@@ -438,7 +438,7 @@ def plot_battery_management(data_by_mechanism):
     
     ax1.set_title("Smart Battery Management Strategy", fontsize=10)
     ax1.set_xlabel("Hour of Day", fontsize=9)
-    ax1.set_xticks(np.arange(0, 24, 6))
+    ax1.set_xticks(np.arange(0, 25, 6))
     ax1.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
     
     # Combine legends from both axes
@@ -501,7 +501,7 @@ def plot_energy_consumption_breakdown(data_by_mechanism):
         ax.set_xlabel("Hour of Day", fontsize=9)
         if i == 0:
             ax.set_ylabel("Energy (kWh)", fontsize=9)
-        ax.set_xticks(np.arange(0, 24, 6))
+        ax.set_xticks(np.arange(0, 25, 6))
         ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
         
         # Only add legend to the first plot

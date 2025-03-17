@@ -73,10 +73,10 @@ class RunAnalyzer:
         
         # Calculate composite score (you can adjust weights based on priorities)
         weights = {
-            'final_avg_reward': 0.35,      
-            'max_avg_reward': 0.0,       
+            'final_avg_reward': 0.3,      
+            'max_avg_reward': 0.2,       
             'avg_trading_profit': 0.2,    
-            'final_selling_price_ratio': 0.3,  
+            'final_selling_price_ratio': 0.15,  
             'avg_p2p_energy': 0.15        
         }
         
