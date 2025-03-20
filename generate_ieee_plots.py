@@ -347,8 +347,8 @@ def plot_temperature_control(data_by_mechanism):
                 best_idx = np.argmax(last_100_rewards)
                 best_runs[mechanism_type] = best_idx
     
-    # Create the figure with IEEE dimensions for a single column
-    fig, ax = plt.subplots(figsize=(3.5, 2.33), dpi=600)
+    # Create the figure with standard dimensions to match energy_analysis plots (5x4)
+    fig, ax = plt.subplots(figsize=(5, 4), dpi=600)
     
     # Placeholder data for demonstration
     # In a real implementation, you would extract actual temperature data from the runs
@@ -379,7 +379,7 @@ def plot_temperature_control(data_by_mechanism):
             
             ax.plot(hours, indoor_temp, color=color, linewidth=0.75, label=f"{mechanism.capitalize()}")
     
-    ax.set_title("Indoor Temperature Control with DDPG", fontsize=10)
+    # Remove title as per energy_analysis settings
     ax.set_xlabel("Hour of Day", fontsize=9)
     ax.set_ylabel("Temperature (°C)", fontsize=9)
     ax.set_xticks(np.arange(0, 25, 6))
@@ -388,9 +388,8 @@ def plot_temperature_control(data_by_mechanism):
     
     plt.tight_layout()
     
-    # Save as PDF and TIFF
+    # Save only as PDF as per energy_analysis settings
     fig.savefig(os.path.join(PLOTS_OUTPUT_DIR, "temperature_control.pdf"), format='pdf', dpi=600, bbox_inches='tight')
-    fig.savefig(os.path.join(PLOTS_OUTPUT_DIR, "temperature_control.tiff"), format='tiff', dpi=600, bbox_inches='tight')
     
     plt.close(fig)
     

@@ -70,9 +70,7 @@ def plot_energy_consumption_breakdown(data_by_mechanism):
         # Third layer: Solar energy
         ax.fill_between(hours, grid_energy + p2p_energy, total_energy, alpha=0.7, color=IEEE_COLORS['orange'], label='Solar Energy')
         
-        # Set labels and title using the display name mapping
-        display_name = MECHANISM_DISPLAY_NAMES[mechanism]
-        ax.set_title(f"{display_name} Energy Consumption", fontsize=12)
+        # Set labels - removing title as requested
         ax.set_xlabel("Hour of Day", fontsize=10)
         ax.set_ylabel("Energy (kWh)", fontsize=10)
         ax.set_xticks(np.arange(0, 25, 6))  # Updated to include hour 24
@@ -83,13 +81,84 @@ def plot_energy_consumption_breakdown(data_by_mechanism):
         
         # Save figure as PDF
         filename = f"energy_consumption_{mechanism}"
-        output_path = save_figure(fig, filename, format='pdf')
+        output_path = save_figure(fig, filename)
         output_paths.append(output_path)
         
         plt.close(fig)
     
+    # Create a merged plot combining all three energy consumption plots
+    merged_path = plot_merged_energy_consumption(mechanism_patterns, mechanism_scaling)
+    if merged_path:
+        output_paths.append(merged_path)
+    
     print("Energy consumption breakdown visualizations generated successfully.")
     return output_paths
+
+
+def plot_merged_energy_consumption(mechanism_patterns, mechanism_scaling):
+    """
+    Create a merged figure containing all three energy consumption plots with (a), (b), (c) labels.
+    
+    Args:
+        mechanism_patterns (dict): Dictionary with energy patterns for each mechanism
+        mechanism_scaling (dict): Dictionary with scaling factors for each mechanism
+        
+    Returns:
+        str: Path to the saved figure
+    """
+    hours = np.arange(24)
+    
+    # Create a figure with three subplots in a row
+    fig, axes = plt.subplots(1, 3, figsize=(12, 4), dpi=600)
+    
+    # Map mechanisms to subplot positions
+    mechanism_order = ['detection', 'ceiling', 'null']
+    
+    # Create each energy consumption plot in its own subplot
+    for i, (mechanism, ax) in enumerate(zip(mechanism_order, axes)):
+        # Get pattern and scaling for this mechanism
+        pattern = mechanism_patterns[mechanism]
+        scaling = mechanism_scaling[mechanism]
+        
+        # Generate the energy breakdown components
+        total_energy = pattern['hvac_profile'] * scaling['total_scale']
+        p2p_energy = total_energy * pattern['p2p_ratio']
+        grid_energy = total_energy * pattern['grid_ratio']
+        solar_energy = total_energy * pattern['solar_ratio']
+        
+        # Create stacked area plot
+        # First layer: Grid energy
+        ax.fill_between(hours, 0, grid_energy, alpha=0.7, color=IEEE_COLORS['blue'], label='Grid Energy')
+        
+        # Second layer: P2P energy
+        ax.fill_between(hours, grid_energy, grid_energy + p2p_energy, alpha=0.7, color=IEEE_COLORS['green'], label='P2P Energy')
+        
+        # Third layer: Solar energy
+        ax.fill_between(hours, grid_energy + p2p_energy, total_energy, alpha=0.7, color=IEEE_COLORS['orange'], label='Solar Energy')
+        
+        # Add subplot label (a), (b), (c) as title
+        display_name = MECHANISM_DISPLAY_NAMES[mechanism]
+        ax.set_title(f"({chr(97+i)}) {display_name}", fontsize=11)
+        
+        # Set labels
+        ax.set_xlabel("Hour of Day", fontsize=9)
+        ax.set_ylabel("Energy (kWh)", fontsize=9)
+        ax.set_xticks(np.arange(0, 25, 6))
+        ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
+        
+        # Only add legend to the last subplot to save space
+        if i == 2:
+            ax.legend(loc='upper right', fontsize=8)
+    
+    plt.tight_layout()
+    
+    # Save figure
+    output_path = save_figure(fig, "merged_energy_consumption")
+    
+    plt.close(fig)
+    
+    print("Merged energy consumption plot generated successfully.")
+    return output_path
 
 
 def _calculate_mechanism_scaling(data_by_mechanism):

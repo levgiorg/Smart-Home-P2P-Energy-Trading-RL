@@ -19,7 +19,7 @@ def moving_average(data, window_size=100):
     return np.convolve(data, np.ones(window_size)/window_size, mode='valid')
 
 
-def classify_runs_by_mechanism(use_sampling=False, samples_per_mechanism=3):
+def  classify_runs_by_mechanism(use_sampling=False, samples_per_mechanism=3):
     """
     Classify runs by their anti-cartel mechanism type.
     

@@ -110,7 +110,7 @@ def plot_per_house_performance(data_by_mechanism):
                     print(f"Error plotting {data_key} for {mechanism} run {run_idx}: {e}")
                     continue
         
-        ax.set_title(subplot['title'], fontsize=10)
+        # Don't add title as requested
         ax.set_xlabel(subplot['xlabel'], fontsize=9)
         ax.set_ylabel(subplot['ylabel'], fontsize=9)
         ax.legend(loc='best', fontsize=8)
@@ -166,8 +166,8 @@ def plot_comparative_matrix(data_by_mechanism):
     sns.heatmap(matrix_data, annot=True, fmt='.2f', cmap='RdBu_r', cbar=True,
                 xticklabels=['Reward\nBased', 'Threshold\nBased', 'No Control\nMethod'],
                 yticklabels=metric_names, ax=ax)
-        
-    ax.set_title("Comparative Performance Matrix", fontsize=10)
+    
+    # No title as requested
     
     plt.tight_layout()
     
@@ -229,8 +229,7 @@ def plot_box_plots(data_by_mechanism):
         for j, whisker in enumerate(bp['whiskers']):
             whisker.set(color=colors[j//2], linewidth=0.5)
         
-        # Set labels and title
-        ax.set_title(metric, fontsize=12)
+        # No title as requested
         ax.set_ylabel('Value', fontsize=10)
         ax.set_xticklabels(['Reward\nBased', 'Threshold\nBased', 'No Control\nMethod'], fontsize=9)
         ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5, axis='y')
@@ -247,8 +246,78 @@ def plot_box_plots(data_by_mechanism):
         
         plt.close(fig)
     
+    # Also create a merged figure with all box plots
+    merged_path = plot_merged_box_plots(data_by_mechanism)
+    if merged_path:
+        output_paths.append(merged_path)
+    
     print("Box plots for statistical analysis generated successfully.")
     return output_paths
+
+
+def plot_merged_box_plots(data_by_mechanism):
+    """
+    Create a merged figure containing all three box plots with (a), (b), (c) labels.
+    
+    Args:
+        data_by_mechanism (dict): Dictionary containing processed data for each mechanism
+        
+    Returns:
+        str: Path to the saved figure
+    """
+    # Prepare data for box plots
+    metrics = ['Price Ratio', 'Trading Profit', 'Energy Efficiency']
+    
+    # Create a figure with three subplots in a row
+    fig, axes = plt.subplots(1, 3, figsize=(12, 4.5), dpi=600)
+    
+    # Create each box plot in its own subplot
+    for i, (metric, ax) in enumerate(zip(metrics, axes)):
+        data_to_plot = []
+        
+        for mechanism in MECHANISMS:
+            if metric == 'Price Ratio':
+                values = _extract_price_ratios(data_by_mechanism[mechanism])
+            elif metric == 'Trading Profit':
+                values = _extract_trading_profits(data_by_mechanism[mechanism])
+            elif metric == 'Energy Efficiency':
+                values = _extract_energy_efficiency(data_by_mechanism[mechanism])
+            
+            data_to_plot.append(values)
+        
+        # Create box plot
+        colors = [IEEE_COLORS['blue'], IEEE_COLORS['green'], IEEE_COLORS['red']]
+        bp = ax.boxplot(data_to_plot, patch_artist=True)
+        
+        # Customize box plot appearance
+        for j, box in enumerate(bp['boxes']):
+            box.set(color=colors[j], linewidth=0.75)
+            box.set(facecolor=colors[j], alpha=0.3)
+        
+        for j, median in enumerate(bp['medians']):
+            median.set(color=colors[j], linewidth=0.75)
+        
+        for j, whisker in enumerate(bp['whiskers']):
+            whisker.set(color=colors[j//2], linewidth=0.5)
+        
+        # Add subplot label (a), (b), (c) as title
+        ax.set_title(f"({chr(97+i)}) {metric}", fontsize=11)
+        
+        # Set labels
+        ax.set_ylabel('Value', fontsize=10)
+        ax.set_xticklabels(['Reward\nBased', 'Threshold\nBased', 'No Control\nMethod'], fontsize=9)
+        ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5, axis='y')
+    
+    plt.tight_layout()
+    
+    # Save figure
+    output_path = save_figure(fig, "merged_box_plots")
+    
+    plt.close(fig)
+    
+    print("Merged box plots generated successfully.")
+    return output_path
+
 
 def _find_top_performing_runs(data_by_mechanism):
     """Find the top performing runs based on average reward."""
@@ -337,12 +406,12 @@ def _calculate_trading_profit(data):
 def _calculate_p2p_energy(data):
     """Calculate P2P energy metric."""
     if data['p2p_energy']:
-        p2p_volume = []
+        p2p_values = []
         for p2p in data['p2p_energy']:
             if len(p2p) >= 100:
-                p2p_volume.append(np.mean(p2p[-100:]))
-        if p2p_volume:
-            return np.mean(p2p_volume)
+                p2p_values.append(np.mean(p2p[-100:]))
+        if p2p_values:
+            return np.mean(p2p_values)
     return 0.0
 
 
@@ -371,15 +440,6 @@ def _calculate_hvac_efficiency(data):
             avg_energy = np.mean(hvac)
             return 1.0 - (avg_energy / max(avg_energy, 0.001))
     return 0.0
-
-
-def _extract_final_rewards(mechanism_data):
-    """Extract final rewards for box plots."""
-    values = []
-    for rewards in mechanism_data['rewards']:
-        if len(rewards) >= 100:
-            values.append(np.mean(rewards[-100:]))
-    return values
 
 
 def _extract_price_ratios(mechanism_data):

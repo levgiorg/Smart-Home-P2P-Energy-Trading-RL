@@ -50,7 +50,7 @@ def plot_hyperparameter_sensitivity(data_by_mechanism):
         
         # Plot the metric
         _plot_metric_sensitivity(ax, metrics_data[metric['key']], 
-                                metric['title'], metric['xlabel'], metric['ylabel'])
+                                None, metric['xlabel'], metric['ylabel'])
         
         plt.tight_layout()
         
@@ -61,8 +61,44 @@ def plot_hyperparameter_sensitivity(data_by_mechanism):
         
         plt.close(fig)
     
+    # Create merged figure with all sensitivity plots
+    merged_path = plot_merged_sensitivity(metrics_data, metrics)
+    if merged_path:
+        output_paths.append(merged_path)
+    
     print("Metric sensitivity plots generated successfully.")
     return output_paths
+
+
+def plot_merged_sensitivity(metrics_data, metrics):
+    """
+    Create a merged figure containing all three sensitivity plots with (a), (b), (c) labels.
+    
+    Args:
+        metrics_data (dict): Dictionary with metrics data for sensitivity analysis
+        metrics (list): List of metric definitions
+        
+    Returns:
+        str: Path to the saved figure
+    """
+    # Create a figure with three subplots in a row
+    fig, axes = plt.subplots(1, 3, figsize=(12, 4), dpi=600)
+    
+    # Create each sensitivity plot in its own subplot
+    for i, (metric, ax) in enumerate(zip(metrics, axes)):
+        # Plot the metric
+        _plot_metric_sensitivity(ax, metrics_data[metric['key']], 
+                              f"({chr(97+i)}) {metric['title']}", metric['xlabel'], metric['ylabel'])
+    
+    plt.tight_layout()
+    
+    # Save figure
+    output_path = save_figure(fig, "merged_sensitivity_plots")
+    
+    plt.close(fig)
+    
+    print("Merged sensitivity plots generated successfully.")
+    return output_path
 
 
 def plot_beta_grid_fee_analysis(data_by_mechanism):
@@ -108,7 +144,7 @@ def plot_beta_grid_fee_analysis(data_by_mechanism):
                     p = np.poly1d(z)
                     ax.plot(np.unique(x_values), p(np.unique(x_values)), color=color, linewidth=1.0)
         
-        ax.set_title(title, fontsize=12)
+        # No title as requested
         ax.set_xlabel(xlabel, fontsize=10)
         ax.set_ylabel(ylabel, fontsize=10)
         ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
@@ -184,7 +220,7 @@ def _plot_metric_sensitivity(ax, data, title, xlabel, ylabel):
     Args:
         ax (matplotlib.axes.Axes): Axes to plot on
         data (dict): Dictionary with metrics data for each mechanism
-        title (str): Plot title
+        title (str): Plot title (can be None)
         xlabel (str): X-axis label
         ylabel (str): Y-axis label
     """
@@ -204,7 +240,9 @@ def _plot_metric_sensitivity(ax, data, title, xlabel, ylabel):
                 p = np.poly1d(z)
                 ax.plot(x_values, p(x_values), color=color, linewidth=0.75)
     
-    ax.set_title(title, fontsize=10)
+    # Only set title if provided (not None)
+    if title:
+        ax.set_title(title, fontsize=10)
     ax.set_xlabel(xlabel, fontsize=9)
     ax.set_ylabel(ylabel, fontsize=9)
     ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
