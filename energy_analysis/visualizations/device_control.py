@@ -19,8 +19,8 @@ def plot_temperature_control(data_by_mechanism):
     Returns:
         str: Path to the saved figure
     """
-    # Create the figure with IEEE dimensions for a single column
-    fig, ax = plt.subplots(figsize=(3.5, 2.33), dpi=600)
+    # Create the figure with standard IEEE dimensions (matching other plots)
+    fig, ax = plt.subplots(figsize=(5, 4), dpi=600)
     
     # Define comfort bounds from hyperparameters (if available)
     comfort_min, comfort_max = 20.0, 22.0  # Default values
@@ -87,7 +87,7 @@ def plot_temperature_control(data_by_mechanism):
                 # Plot the inferred temperature
                 ax.plot(plot_hours, temperature, color=color, linewidth=1.0, label=f"{MECHANISM_DISPLAY_NAMES[mechanism]}")
     
-    ax.set_title("Indoor Temperature Control Performance", fontsize=10)
+    # Remove the title as requested
     ax.set_xlabel("Hour of Day", fontsize=9)
     ax.set_ylabel("Temperature (°C)", fontsize=9)
     ax.set_xticks(np.arange(0, 25, 6))  # Updated to include hour 24
@@ -97,7 +97,7 @@ def plot_temperature_control(data_by_mechanism):
     plt.tight_layout()
     
     # Save figure as PDF
-    output_path = save_figure(fig, "temperature_control", format='pdf')
+    output_path = save_figure(fig, "temperature_control")
     
     plt.close(fig)
     
@@ -116,8 +116,8 @@ def plot_battery_management(data_by_mechanism):
     Returns:
         str: Path to the saved figure
     """
-    # Create the figure with IEEE dimensions for a single column
-    fig, ax1 = plt.subplots(figsize=(3.5, 2.33), dpi=600)
+    # Create the figure with standard IEEE dimensions (matching other plots)
+    fig, ax1 = plt.subplots(figsize=(5, 4), dpi=600)
     
     # Create a secondary y-axis
     ax2 = ax1.twinx()
@@ -174,7 +174,7 @@ def plot_battery_management(data_by_mechanism):
     grid_price = 20 + grid_price * 30  # Scale to fit on SoC plot
     ax1.plot(hours, grid_price, color=IEEE_COLORS['purple'], linestyle=':', linewidth=0.75, label='Grid Price')
     
-    ax1.set_title("Price-responsive Battery Management", fontsize=10)
+    # Remove the title as requested
     ax1.set_xlabel("Hour of Day", fontsize=9)
     ax1.set_xticks(np.arange(0, 25, 6))  # Updated to include hour 24
     ax1.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
@@ -187,7 +187,7 @@ def plot_battery_management(data_by_mechanism):
     plt.tight_layout()
     
     # Save figure as PDF
-    output_path = save_figure(fig, "battery_management", format='pdf')
+    output_path = save_figure(fig, "battery_management")
     
     plt.close(fig)
     

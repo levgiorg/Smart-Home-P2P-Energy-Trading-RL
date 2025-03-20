@@ -5,6 +5,7 @@ import os
 import json
 import pickle
 import numpy as np
+import time
 from energy_analysis.config import ML_OUTPUT_DIR
 
 
@@ -39,10 +40,31 @@ def load_data(runs_by_mechanism):
         } for mechanism_type in runs_by_mechanism.keys()
     }
     
+    # Calculate total runs to process
+    total_runs = sum(len(runs) for runs in runs_by_mechanism.values())
+    processed_runs = 0
+    
+    start_time = time.time()
+    
     for mechanism_type, run_ids in runs_by_mechanism.items():
+        print(f"\nProcessing {mechanism_type} mechanism runs ({len(run_ids)} runs):")
+        
         for run_id in run_ids:
+            processed_runs += 1
             run_dir = os.path.join(ML_OUTPUT_DIR, f"run_{run_id}")
+            print(f"  Loading run {run_id}/{total_runs} ({processed_runs/total_runs*100:.1f}% complete) - {run_dir}")
             
+            # Check if the directory exists
+            if not os.path.exists(run_dir):
+                print(f"  Warning: Run directory {run_dir} does not exist. Skipping.")
+                continue
+            
+            # Check if the data directory exists
+            data_dir = os.path.join(run_dir, 'data')
+            if not os.path.exists(data_dir):
+                print(f"  Warning: Data directory {data_dir} does not exist. Skipping.")
+                continue
+                
             try:
                 # Load hyperparameters for this run
                 _load_hyperparameters(run_dir, run_id, mechanism_type, data_by_mechanism)
@@ -69,7 +91,18 @@ def load_data(runs_by_mechanism):
                 _load_anticartel_penalties(run_dir, run_id, mechanism_type, data_by_mechanism)
                 
             except Exception as e:
-                print(f"Error processing run {run_dir}: {e}")
+                print(f"  Error processing run {run_dir}: {str(e)}")
+    
+    elapsed_time = time.time() - start_time
+    print(f"\nFinished loading {total_runs} runs in {elapsed_time:.2f} seconds")
+    
+    # Print summary of loaded data
+    print("\nSummary of loaded data:")
+    for mechanism_type in data_by_mechanism:
+        print(f"  {mechanism_type}:")
+        for key, values in data_by_mechanism[mechanism_type].items():
+            if isinstance(values, list):
+                print(f"    {key}: {len(values)} entries")
     
     return data_by_mechanism
 
@@ -77,7 +110,12 @@ def load_data(runs_by_mechanism):
 def _load_hyperparameters(run_dir, run_id, mechanism_type, data_by_mechanism):
     """Load hyperparameters for a specific run."""
     try:
-        with open(os.path.join(run_dir, "hyperparameters.json"), 'r') as f:
+        hyperparams_path = os.path.join(run_dir, "hyperparameters.json")
+        if not os.path.exists(hyperparams_path):
+            print(f"    Warning: Hyperparameters file not found at {hyperparams_path}")
+            return None, None, None
+            
+        with open(hyperparams_path, 'r') as f:
             hyperparams = json.load(f)
             data_by_mechanism[mechanism_type]['hyperparameters'].append({
                 'run_id': run_id,
@@ -102,10 +140,9 @@ def _load_hyperparameters(run_dir, run_id, mechanism_type, data_by_mechanism):
             else:
                 comfort_penalty = None
             
-            # Store extracted parameters for later use
             return beta, grid_fee, comfort_penalty
     except Exception as e:
-        print(f"Could not load hyperparameters for {run_dir}: {e}")
+        print(f"    Warning: Could not load hyperparameters for {run_dir}: {e}")
         return None, None, None
 
 

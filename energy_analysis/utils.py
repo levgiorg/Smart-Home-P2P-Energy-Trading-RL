@@ -1,5 +1,5 @@
 """
-Utility functions for data analysis and processing.
+Utility functions for energy mechanism analysis.
 """
 import numpy as np
 import os
@@ -19,9 +19,13 @@ def moving_average(data, window_size=100):
     return np.convolve(data, np.ones(window_size)/window_size, mode='valid')
 
 
-def classify_runs_by_mechanism():
+def classify_runs_by_mechanism(use_sampling=False, samples_per_mechanism=3):
     """
     Classify runs by their anti-cartel mechanism type.
+    
+    Args:
+        use_sampling (bool): Whether to sample a subset of runs
+        samples_per_mechanism (int): Number of runs to sample per mechanism
     
     Returns:
         dict: Dictionary with mechanism types as keys and lists of run IDs as values
@@ -32,38 +36,52 @@ def classify_runs_by_mechanism():
         'null': []
     }
     
-    # Based on the specification:
-    # Runs 1-21 are for detection mechanism
-    # Runs 22-42 are for ceiling mechanism
-    # Runs 43-63 are for null mechanism
-    for run_id in range(1, 22):
-        runs_by_mechanism['detection'].append(run_id)
+    # Use these run ranges based on the specification
+    mechanism_ranges = {
+        'detection': range(1, 22),
+        'ceiling': range(22, 43),
+        'null': range(43, 64)
+    }
     
-    for run_id in range(22, 43):
-        runs_by_mechanism['ceiling'].append(run_id)
-    
-    for run_id in range(43, 64):
-        runs_by_mechanism['null'].append(run_id)
+    # Apply sampling if requested
+    if use_sampling:
+        for mechanism, run_range in mechanism_ranges.items():
+            # Convert range to list for random sampling
+            all_runs = list(run_range)
+            # Ensure we don't try to sample more than available
+            sample_count = min(samples_per_mechanism, len(all_runs))
+            # Randomly select runs
+            sampled_runs = np.random.choice(all_runs, size=sample_count, replace=False)
+            runs_by_mechanism[mechanism] = sorted(list(sampled_runs))
+            print(f"Sampled {sample_count} runs for {mechanism} mechanism: {runs_by_mechanism[mechanism]}")
+    else:
+        # Use all runs
+        for mechanism, run_range in mechanism_ranges.items():
+            runs_by_mechanism[mechanism] = list(run_range)
     
     return runs_by_mechanism
 
 
-def save_figure(fig, filename, formats=None):
+def save_figure(fig, filename, formats=None, **kwargs):
     """
-    Save figure to multiple formats with IEEE-compliant settings.
+    Enhanced save_figure that handles additional parameters.
     
     Args:
         fig (matplotlib.figure.Figure): Figure to save
         filename (str): Base filename without extension
-        formats (list, optional): List of formats to save. Defaults to ['pdf', 'tiff'].
+        formats (list, optional): List of formats to save. Defaults to ['pdf'].
+        **kwargs: Additional arguments passed to savefig
     """
     from energy_analysis.config import PLOTS_OUTPUT_DIR
     
-    if formats is None:
-        formats = ['pdf', 'tiff']
+    # Only save as PDF as requested
+    formats = ['pdf']
+    
+    # Handle other kwargs
+    savefig_kwargs = {k: v for k, v in kwargs.items() if k != 'format'}
     
     for fmt in formats:
         output_path = os.path.join(PLOTS_OUTPUT_DIR, f"{filename}.{fmt}")
-        fig.savefig(output_path, format=fmt, dpi=600, bbox_inches='tight')
+        fig.savefig(output_path, format=fmt, dpi=600, bbox_inches='tight', **savefig_kwargs)
     
-    return output_path
+    return os.path.join(PLOTS_OUTPUT_DIR, f"{filename}.{formats[0]}")
