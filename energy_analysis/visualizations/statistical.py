@@ -111,10 +111,10 @@ def plot_per_house_performance(data_by_mechanism):
                     continue
         
         # Don't add title as requested
-        ax.set_xlabel(subplot['xlabel'], fontsize=9)
-        ax.set_ylabel(subplot['ylabel'], fontsize=9)
-        ax.legend(loc='best', fontsize=8)
-        ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
+        ax.set_xlabel(subplot['xlabel'], fontsize=12)
+        ax.set_ylabel(subplot['ylabel'], fontsize=12)
+        ax.legend(loc='best', fontsize=12)
+        ax.grid(True, alpha=0.3, linestyle='--', linewidth=1.0)
     
     plt.tight_layout()
     
@@ -220,19 +220,19 @@ def plot_box_plots(data_by_mechanism):
         
         # Customize box plot appearance
         for j, box in enumerate(bp['boxes']):
-            box.set(color=colors[j], linewidth=0.75)
+            box.set(color=colors[j], linewidth=1.5)
             box.set(facecolor=colors[j], alpha=0.3)
         
         for j, median in enumerate(bp['medians']):
-            median.set(color=colors[j], linewidth=0.75)
+            median.set(color=colors[j], linewidth=1.5)
         
         for j, whisker in enumerate(bp['whiskers']):
-            whisker.set(color=colors[j//2], linewidth=0.5)
+            whisker.set(color=colors[j//2], linewidth=1.5)
         
         # No title as requested
-        ax.set_ylabel('Value', fontsize=10)
-        ax.set_xticklabels(['Reward\nBased', 'Threshold\nBased', 'No Control\nMethod'], fontsize=9)
-        ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5, axis='y')
+        ax.set_ylabel('Value', fontsize=13)
+        ax.set_xticklabels(['Reward\nBased', 'Threshold\nBased', 'No Control\nMethod'], fontsize=12)
+        ax.grid(True, alpha=0.3, linestyle='--', linewidth=1.0, axis='y')
         
         # Add more space at the bottom for x-axis labels
         plt.subplots_adjust(bottom=0.18)
@@ -291,22 +291,22 @@ def plot_merged_box_plots(data_by_mechanism):
         
         # Customize box plot appearance
         for j, box in enumerate(bp['boxes']):
-            box.set(color=colors[j], linewidth=0.75)
+            box.set(color=colors[j], linewidth=1.5)
             box.set(facecolor=colors[j], alpha=0.3)
         
         for j, median in enumerate(bp['medians']):
-            median.set(color=colors[j], linewidth=0.75)
+            median.set(color=colors[j], linewidth=1.5)
         
         for j, whisker in enumerate(bp['whiskers']):
-            whisker.set(color=colors[j//2], linewidth=0.5)
+            whisker.set(color=colors[j//2], linewidth=1.0)
         
         # Add subplot label (a), (b), (c) as title
-        ax.set_title(f"({chr(97+i)}) {metric}", fontsize=11)
+        ax.set_title(f"({chr(97+i)}) {metric}", fontsize=14)
         
         # Set labels
-        ax.set_ylabel('Value', fontsize=10)
-        ax.set_xticklabels(['Reward\nBased', 'Threshold\nBased', 'No Control\nMethod'], fontsize=9)
-        ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5, axis='y')
+        ax.set_ylabel('Value', fontsize=13)
+        ax.set_xticklabels(['Reward\nBased', 'Threshold\nBased', 'No Control\nMethod'], fontsize=12)
+        ax.grid(True, alpha=0.3, linestyle='--', linewidth=100, axis='y')
     
     plt.tight_layout()
     

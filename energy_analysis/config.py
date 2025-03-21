@@ -42,15 +42,15 @@ def configure_matplotlib():
     """Configure matplotlib settings for IEEE-compliant figures."""
     mpl.rcParams['font.family'] = 'serif'
     mpl.rcParams['font.serif'] = ['Times New Roman']
-    mpl.rcParams['axes.labelsize'] = 9
-    mpl.rcParams['axes.titlesize'] = 10
-    mpl.rcParams['xtick.labelsize'] = 8
-    mpl.rcParams['ytick.labelsize'] = 8
-    mpl.rcParams['legend.fontsize'] = 8
+    mpl.rcParams['axes.labelsize'] = 12
+    mpl.rcParams['axes.titlesize'] = 13
+    mpl.rcParams['xtick.labelsize'] = 11
+    mpl.rcParams['ytick.labelsize'] = 11
+    mpl.rcParams['legend.fontsize'] = 11
     mpl.rcParams['figure.dpi'] = 600
     mpl.rcParams['savefig.dpi'] = 600
-    mpl.rcParams['lines.linewidth'] = 0.75
-    mpl.rcParams['grid.linewidth'] = 0.5
+    mpl.rcParams['lines.linewidth'] = 1.5
+    mpl.rcParams['grid.linewidth'] = 1.5
     mpl.rcParams['axes.grid'] = True
     mpl.rcParams['grid.alpha'] = 0.3
     mpl.rcParams['axes.axisbelow'] = True  # grid lines behind data

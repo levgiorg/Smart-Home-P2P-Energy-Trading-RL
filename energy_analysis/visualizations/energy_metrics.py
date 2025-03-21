@@ -71,11 +71,11 @@ def plot_energy_consumption_breakdown(data_by_mechanism):
         ax.fill_between(hours, grid_energy + p2p_energy, total_energy, alpha=0.7, color=IEEE_COLORS['orange'], label='Solar Energy')
         
         # Set labels - removing title as requested
-        ax.set_xlabel("Hour of Day", fontsize=10)
-        ax.set_ylabel("Energy (kWh)", fontsize=10)
+        ax.set_xlabel("Hour of Day", fontsize=13)
+        ax.set_ylabel("Energy (kWh)", fontsize=13)
         ax.set_xticks(np.arange(0, 25, 6))  # Updated to include hour 24
-        ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
-        ax.legend(loc='upper right', fontsize=9)
+        ax.grid(True, alpha=0.3, linestyle='--', linewidth=1.0)
+        ax.legend(loc='upper right', fontsize=12)
         
         plt.tight_layout()
         
@@ -138,17 +138,17 @@ def plot_merged_energy_consumption(mechanism_patterns, mechanism_scaling):
         
         # Add subplot label (a), (b), (c) as title
         display_name = MECHANISM_DISPLAY_NAMES[mechanism]
-        ax.set_title(f"({chr(97+i)}) {display_name}", fontsize=11)
+        ax.set_title(f"({chr(97+i)}) {display_name}", fontsize=14)
         
         # Set labels
-        ax.set_xlabel("Hour of Day", fontsize=9)
-        ax.set_ylabel("Energy (kWh)", fontsize=9)
+        ax.set_xlabel("Hour of Day", fontsize=12)
+        ax.set_ylabel("Energy (kWh)", fontsize=12)
         ax.set_xticks(np.arange(0, 25, 6))
-        ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
+        ax.grid(True, alpha=0.3, linestyle='--', linewidth=1.0)
         
         # Only add legend to the last subplot to save space
         if i == 2:
-            ax.legend(loc='upper right', fontsize=8)
+            ax.legend(loc='upper right', fontsize=11)
     
     plt.tight_layout()
     

@@ -142,13 +142,13 @@ def plot_beta_grid_fee_analysis(data_by_mechanism):
                 if len(x_values) >= 3:
                     z = np.polyfit(x_values, y_values, 1)
                     p = np.poly1d(z)
-                    ax.plot(np.unique(x_values), p(np.unique(x_values)), color=color, linewidth=1.0)
+                    ax.plot(np.unique(x_values), p(np.unique(x_values)), color=color, linewidth=2.0)
         
         # No title as requested
-        ax.set_xlabel(xlabel, fontsize=10)
-        ax.set_ylabel(ylabel, fontsize=10)
-        ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
-        ax.legend(loc='best', fontsize=9)
+        ax.set_xlabel(xlabel, fontsize=13)
+        ax.set_ylabel(ylabel, fontsize=13)
+        ax.grid(True, alpha=0.3, linestyle='--', linewidth=1.0)
+        ax.legend(loc='best', fontsize=12)
         
         plt.tight_layout()
         
@@ -238,12 +238,12 @@ def _plot_metric_sensitivity(ax, data, title, xlabel, ylabel):
             if len(x_values) >= 3:
                 z = np.polyfit(x_values, y_values, 1)
                 p = np.poly1d(z)
-                ax.plot(x_values, p(x_values), color=color, linewidth=0.75)
+                ax.plot(x_values, p(x_values), color=color, linewidth=1.5)
     
     # Only set title if provided (not None)
     if title:
-        ax.set_title(title, fontsize=10)
-    ax.set_xlabel(xlabel, fontsize=9)
-    ax.set_ylabel(ylabel, fontsize=9)
-    ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
-    ax.legend(loc='best', fontsize=6)
+        ax.set_title(title, fontsize=13)
+    ax.set_xlabel(xlabel, fontsize=12)
+    ax.set_ylabel(ylabel, fontsize=12)
+    ax.grid(True, alpha=0.3, linestyle='--', linewidth=1.0)
+    ax.legend(loc='best', fontsize=9)

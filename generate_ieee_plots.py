@@ -14,15 +14,15 @@ import glob
 # IEEE-compliant settings
 mpl.rcParams['font.family'] = 'serif'
 mpl.rcParams['font.serif'] = ['Times New Roman']
-mpl.rcParams['axes.labelsize'] = 9
-mpl.rcParams['axes.titlesize'] = 10
-mpl.rcParams['xtick.labelsize'] = 8
-mpl.rcParams['ytick.labelsize'] = 8
-mpl.rcParams['legend.fontsize'] = 8
+mpl.rcParams['axes.labelsize'] = 12  
+mpl.rcParams['axes.titlesize'] = 13
+mpl.rcParams['xtick.labelsize'] = 11
+mpl.rcParams['ytick.labelsize'] = 11
+mpl.rcParams['legend.fontsize'] = 11
 mpl.rcParams['figure.dpi'] = 600
 mpl.rcParams['savefig.dpi'] = 600
-mpl.rcParams['lines.linewidth'] = 0.75
-mpl.rcParams['grid.linewidth'] = 0.5
+mpl.rcParams['lines.linewidth'] = 1.5
+mpl.rcParams['grid.linewidth'] = 1.0
 mpl.rcParams['axes.grid'] = True
 mpl.rcParams['grid.alpha'] = 0.3
 mpl.rcParams['axes.axisbelow'] = True  # grid lines behind data
@@ -276,7 +276,7 @@ def plot_mechanism_comparison(data_by_mechanism):
         ax.set_title(subplot['title'], fontsize=10)
         ax.set_xlabel(subplot['xlabel'], fontsize=9)
         ax.set_ylabel(subplot['ylabel'], fontsize=9)
-        ax.legend(loc='best', fontsize=8)
+        ax.legend(loc='best', fontsize=11)
         ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
         
         plt.tight_layout()
@@ -320,7 +320,7 @@ def plot_mechanism_comparison(data_by_mechanism):
         ax.set_title(subplot['title'], fontsize=10)
         ax.set_xlabel(subplot['xlabel'], fontsize=9)
         ax.set_ylabel(subplot['ylabel'], fontsize=9)
-        ax.legend(loc='best', fontsize=8)
+        ax.legend(loc='best', fontsize=11)
         ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
     
     plt.tight_layout()
@@ -359,11 +359,11 @@ def plot_temperature_control(data_by_mechanism):
     outdoor_temp = 15 + 10 * np.sin(np.pi * hours / 12)
     
     # Plot comfort bounds
-    ax.axhline(y=comfort_min, color='r', linestyle='--', linewidth=0.5, label='Comfort Bounds')
-    ax.axhline(y=comfort_max, color='r', linestyle='--', linewidth=0.5)
+    ax.axhline(y=comfort_min, color='r', linestyle='--', linewidth=1.5, label='Comfort Bounds')
+    ax.axhline(y=comfort_max, color='r', linestyle='--', linewidth=1.5)
     
     # Plot outdoor temperature
-    ax.plot(hours, outdoor_temp, color='gray', linestyle='--', linewidth=0.75, label='Outdoor Temp')
+    ax.plot(hours, outdoor_temp, color='gray', linestyle='--', linewidth=1.5, label='Outdoor Temp')
     
     # Plot indoor temperatures for best runs of each mechanism
     for mechanism, color in zip(['detection', 'ceiling', 'null'], [ieee_blue, ieee_green, ieee_red]):
@@ -377,14 +377,14 @@ def plot_temperature_control(data_by_mechanism):
             elif mechanism == 'ceiling':
                 indoor_temp -= 0.1 * np.cos(hours)
             
-            ax.plot(hours, indoor_temp, color=color, linewidth=0.75, label=f"{mechanism.capitalize()}")
+            ax.plot(hours, indoor_temp, color=color, linewidth=1.5, label=f"{mechanism.capitalize()}")
     
     # Remove title as per energy_analysis settings
-    ax.set_xlabel("Hour of Day", fontsize=9)
-    ax.set_ylabel("Temperature (°C)", fontsize=9)
+    ax.set_xlabel("Hour of Day", fontsize=12)
+    ax.set_ylabel("Temperature (°C)", fontsize=12)
     ax.set_xticks(np.arange(0, 25, 6))
-    ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
-    ax.legend(loc='best', fontsize=8)
+    ax.grid(True, alpha=0.3, linestyle='--', linewidth=1.0)
+    ax.legend(loc='best', fontsize=11)
     
     plt.tight_layout()
     
@@ -497,7 +497,7 @@ def plot_energy_consumption_breakdown(data_by_mechanism):
                        alpha=0.7, color=ieee_orange, label='Renewable Energy')
         
         ax.set_title(f"{mechanism.capitalize()} Mechanism", fontsize=10)
-        ax.set_xlabel("Hour of Day", fontsize=9)
+        ax.set_xlabel("Hour of Day", fontsize=12)
         if i == 0:
             ax.set_ylabel("Energy (kWh)", fontsize=9)
         ax.set_xticks(np.arange(0, 25, 6))
@@ -627,7 +627,7 @@ def plot_per_house_performance(data_by_mechanism):
         ax.set_title(subplot['title'], fontsize=10)
         ax.set_xlabel(subplot['xlabel'], fontsize=9)
         ax.set_ylabel(subplot['ylabel'], fontsize=9)
-        ax.legend(loc='best', fontsize=8)
+        ax.legend(loc='best', fontsize=11)
         ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
     
     plt.tight_layout()
@@ -857,7 +857,7 @@ def plot_hyperparameter_sensitivity():
     ax.set_xlabel("Penalty Factor", fontsize=9)
     ax.set_ylabel("Reward", fontsize=9)
     ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
-    ax.legend(loc='best', fontsize=8)
+    ax.legend(loc='best', fontsize=11)
     
     # 2. Similarity threshold sensitivity
     similarity_thresholds = np.linspace(0.5, 0.95, 10)

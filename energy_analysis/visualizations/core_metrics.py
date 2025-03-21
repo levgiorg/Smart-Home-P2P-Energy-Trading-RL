@@ -88,21 +88,21 @@ def plot_mechanism_comparison(data_by_mechanism):
                         episodes = np.arange(100, min_length + 1)
                         
                         # Plot line only without error band
-                        ax.plot(episodes, smoothed_data, color=color, linewidth=1.0, label=f"{MECHANISM_DISPLAY_NAMES[mechanism]}")
+                        ax.plot(episodes, smoothed_data, color=color, linewidth=2.0, label=f"{MECHANISM_DISPLAY_NAMES[mechanism]}")
                     else:
                         # For trading profits or short data, plot without moving average
                         episodes = np.arange(1, min_length + 1)
-                        ax.plot(episodes, data_avg, color=color, linewidth=1.0, label=f"{MECHANISM_DISPLAY_NAMES[mechanism]}")
+                        ax.plot(episodes, data_avg, color=color, linewidth=2.0, label=f"{MECHANISM_DISPLAY_NAMES[mechanism]}")
                 
                 except Exception as e:
                     print(f"Error plotting {subplot['name']} for {mechanism}: {e}")
         
         # Set titles and labels
-        ax.set_title(subplot['title'], fontsize=10)
-        ax.set_xlabel(subplot['xlabel'], fontsize=9)
-        ax.set_ylabel(subplot['ylabel'], fontsize=9)
-        ax.legend(loc='best', fontsize=8)
-        ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
+        ax.set_title(subplot['title'], fontsize=13)
+        ax.set_xlabel(subplot['xlabel'], fontsize=12)
+        ax.set_ylabel(subplot['ylabel'], fontsize=12)
+        ax.legend(loc='best', fontsize=11)
+        ax.grid(True, alpha=0.3, linestyle='--', linewidth=1.0)
         
         plt.tight_layout()
         
@@ -135,18 +135,18 @@ def plot_mechanism_comparison(data_by_mechanism):
                     if data_key != 'trading_profits' and len(data_avg) >= 100:
                         smoothed_data = moving_average(data_avg, 100)
                         episodes = np.arange(100, min_length + 1)
-                        ax.plot(episodes, smoothed_data, color=color, linewidth=1.0, label=f"{MECHANISM_DISPLAY_NAMES[mechanism]}")
+                        ax.plot(episodes, smoothed_data, color=color, linewidth=2.0, label=f"{MECHANISM_DISPLAY_NAMES[mechanism]}")
                     else:
                         episodes = np.arange(1, min_length + 1)
-                        ax.plot(episodes, data_avg, color=color, linewidth=1.0, label=f"{MECHANISM_DISPLAY_NAMES[mechanism]}")
+                        ax.plot(episodes, data_avg, color=color, linewidth=2.0, label=f"{MECHANISM_DISPLAY_NAMES[mechanism]}")
                 except Exception as e:
                     print(f"Error plotting {subplot['name']} for {mechanism} in grid: {e}")
         
-        ax.set_title(subplot['title'], fontsize=10)
-        ax.set_xlabel(subplot['xlabel'], fontsize=9)
-        ax.set_ylabel(subplot['ylabel'], fontsize=9)
-        ax.legend(loc='best', fontsize=8)
-        ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
+        ax.set_title(subplot['title'], fontsize=13)
+        ax.set_xlabel(subplot['xlabel'], fontsize=12)
+        ax.set_ylabel(subplot['ylabel'], fontsize=12)
+        ax.legend(loc='best', fontsize=11)
+        ax.grid(True, alpha=0.3, linestyle='--', linewidth=1.0)
     
     plt.tight_layout()
     output_path = save_figure(fig, "mechanism_comparison_grid")
