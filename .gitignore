@@ -5,3 +5,6 @@ cartel_comparison.png
 ml-outputs2/
 ml-outputs3/
 *.pyc
+.venv/
+*.pdf
+*.html

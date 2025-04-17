@@ -10,6 +10,7 @@ Modules:
     device_control: Temperature and battery control visualizations
     statistical: Statistical and comparative visualizations
     sensitivity: Parameter sensitivity analysis visualizations
+    advanced_plots: Advanced story-telling visualizations for publication
 """
 
 from energy_analysis.visualizations.core_metrics import plot_mechanism_comparison
@@ -29,6 +30,15 @@ from energy_analysis.visualizations.sensitivity import (
     plot_hyperparameter_sensitivity,
     plot_beta_grid_fee_analysis
 )
+from energy_analysis.visualizations.advanced_plots import (
+    plot_energy_sankey,
+    plot_temperature_comfort_zone,
+    plot_24h_energy_price_correlation,
+    plot_unified_mechanism_comparison,
+    plot_market_dynamics_evolution,
+    plot_radar_mechanism_comparison,
+    plot_daily_energy_flow_diagram
+)
 
 __all__ = [
     'plot_mechanism_comparison',
@@ -39,5 +49,12 @@ __all__ = [
     'plot_comparative_matrix',
     'plot_box_plots',
     'plot_hyperparameter_sensitivity',
-    'plot_beta_grid_fee_analysis'
+    'plot_beta_grid_fee_analysis',
+    'plot_energy_sankey',
+    'plot_temperature_comfort_zone',
+    'plot_24h_energy_price_correlation',
+    'plot_unified_mechanism_comparison',
+    'plot_market_dynamics_evolution',
+    'plot_radar_mechanism_comparison',
+    'plot_daily_energy_flow_diagram'
 ]

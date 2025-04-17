@@ -27,7 +27,14 @@ from energy_analysis.visualizations import (
     plot_comparative_matrix,
     plot_box_plots,
     plot_hyperparameter_sensitivity,
-    plot_beta_grid_fee_analysis
+    plot_beta_grid_fee_analysis,
+    plot_energy_sankey,
+    plot_temperature_comfort_zone,
+    plot_24h_energy_price_correlation,
+    plot_unified_mechanism_comparison,
+    plot_market_dynamics_evolution,
+    plot_radar_mechanism_comparison,
+    plot_daily_energy_flow_diagram
 )
 
 def identify_outliers(data_by_mechanism, threshold=5.0):
@@ -79,6 +86,7 @@ def generate_plots(data_by_mechanism):
     """
     plot_paths = {}
     plot_functions = [
+        # Standard plots
         ('mechanism_comparison', plot_mechanism_comparison),
         ('temperature_control', plot_temperature_control),
         ('battery_management', plot_battery_management),
@@ -87,7 +95,16 @@ def generate_plots(data_by_mechanism):
         ('comparative_matrix', plot_comparative_matrix),
         ('box_plots', plot_box_plots),
         ('metric_sensitivity', plot_hyperparameter_sensitivity),
-        ('parameter_impact', plot_beta_grid_fee_analysis)
+        ('parameter_impact', plot_beta_grid_fee_analysis),
+        
+        # Advanced journal-quality plots
+        ('energy_sankey', plot_energy_sankey),
+        ('temperature_comfort_zone', plot_temperature_comfort_zone),
+        ('energy_price_correlation', plot_24h_energy_price_correlation),
+        ('unified_mechanism_comparison', plot_unified_mechanism_comparison),
+        ('market_dynamics', plot_market_dynamics_evolution),
+        ('radar_chart', plot_radar_mechanism_comparison),
+        ('daily_energy_flow', plot_daily_energy_flow_diagram)
     ]
     
     for plot_name, plot_function in plot_functions:

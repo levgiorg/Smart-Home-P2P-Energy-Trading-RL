@@ -42,11 +42,11 @@ def configure_matplotlib():
     """Configure matplotlib settings for IEEE-compliant figures."""
     mpl.rcParams['font.family'] = 'serif'
     mpl.rcParams['font.serif'] = ['Times New Roman']
-    mpl.rcParams['axes.labelsize'] = 12
-    mpl.rcParams['axes.titlesize'] = 13
-    mpl.rcParams['xtick.labelsize'] = 11
-    mpl.rcParams['ytick.labelsize'] = 11
-    mpl.rcParams['legend.fontsize'] = 11
+    mpl.rcParams['axes.labelsize'] = 16
+    mpl.rcParams['axes.titlesize'] = 17
+    mpl.rcParams['xtick.labelsize'] = 15
+    mpl.rcParams['ytick.labelsize'] = 15
+    mpl.rcParams['legend.fontsize'] = 15
     mpl.rcParams['figure.dpi'] = 600
     mpl.rcParams['savefig.dpi'] = 600
     mpl.rcParams['lines.linewidth'] = 1.5
