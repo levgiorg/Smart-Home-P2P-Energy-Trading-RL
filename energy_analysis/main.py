@@ -34,7 +34,10 @@ from energy_analysis.visualizations import (
     plot_unified_mechanism_comparison,
     plot_market_dynamics_evolution,
     plot_radar_mechanism_comparison,
-    plot_daily_energy_flow_diagram
+    plot_daily_energy_flow_diagram,
+    plot_p2p_transaction_patterns,
+    plot_p2p_price_convergence,
+    plot_integrated_p2p_analysis
 )
 
 def identify_outliers(data_by_mechanism, threshold=5.0):
@@ -104,7 +107,10 @@ def generate_plots(data_by_mechanism):
         ('unified_mechanism_comparison', plot_unified_mechanism_comparison),
         ('market_dynamics', plot_market_dynamics_evolution),
         ('radar_chart', plot_radar_mechanism_comparison),
-        ('daily_energy_flow', plot_daily_energy_flow_diagram)
+        ('daily_energy_flow', plot_daily_energy_flow_diagram),
+        ('p2p_transactions', plot_p2p_transaction_patterns),
+        ('p2p_price_convergence', plot_p2p_price_convergence),
+        ('integrated_p2p_analysis', plot_integrated_p2p_analysis)
     ]
     
     for plot_name, plot_function in plot_functions:

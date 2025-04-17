@@ -8,3 +8,4 @@ ml-outputs3/
 .venv/
 *.pdf
 *.html
+energy_analysis/ieee_plots/

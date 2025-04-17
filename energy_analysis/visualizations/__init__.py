@@ -37,7 +37,10 @@ from energy_analysis.visualizations.advanced_plots import (
     plot_unified_mechanism_comparison,
     plot_market_dynamics_evolution,
     plot_radar_mechanism_comparison,
-    plot_daily_energy_flow_diagram
+    plot_daily_energy_flow_diagram,
+    plot_p2p_transaction_patterns,
+    plot_p2p_price_convergence,
+    plot_integrated_p2p_analysis
 )
 
 __all__ = [
@@ -56,5 +59,9 @@ __all__ = [
     'plot_unified_mechanism_comparison',
     'plot_market_dynamics_evolution',
     'plot_radar_mechanism_comparison',
-    'plot_daily_energy_flow_diagram'
+    'plot_daily_energy_flow_diagram',
+    'plot_p2p_network_comparison',
+    'plot_p2p_transaction_patterns',
+    'plot_p2p_price_convergence',
+    'plot_integrated_p2p_analysis'
 ]

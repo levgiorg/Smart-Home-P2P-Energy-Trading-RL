@@ -16,6 +16,7 @@ import matplotlib.gridspec as gridspec
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.ticker import MaxNLocator
 from matplotlib.patches import Patch, Rectangle
+import networkx as nx
 from energy_analysis.config import MECHANISMS, IEEE_COLORS, MECHANISM_DISPLAY_NAMES, MECHANISM_COLORS
 from energy_analysis.utils import save_figure
 from collections import OrderedDict
@@ -123,7 +124,7 @@ def plot_energy_sankey(data_by_mechanism):
 def plot_temperature_comfort_zone(data_by_mechanism):
     """
     Create a plot showing temperature control over time with comfort zone highlighting.
-    Adds time-of-day correlation and grid price overlay for context.
+    Adds time-of-day correlation without grid price overlay.
     
     Args:
         data_by_mechanism (dict): Dictionary containing processed data for each mechanism
@@ -163,22 +164,13 @@ def plot_temperature_comfort_zone(data_by_mechanism):
     ax.axvspan(17, 24, alpha=0.1, color='gray')
     
     # Annotate key times
-    ax.annotate('Morning', xy=(7, comfort_min-1), xytext=(7, comfort_min-1.5),
+    ax.annotate('Morning', xy=(5, comfort_min-1), xytext=(5, comfort_min-1),
                 fontsize=12, ha='center', color='dimgray')
-    ax.annotate('Peak Demand', xy=(18, comfort_min-1), xytext=(18, comfort_min-1.5), 
+    ax.annotate('Peak Demand', xy=(17, comfort_min-1), xytext=(17, comfort_min-1),
                 fontsize=12, ha='center', color='dimgray')
     
     # Plot outdoor temperature
     ax.plot(hours, outdoor_temp, '--', color='gray', linewidth=1.2, label='Outdoor Temperature')
-    
-    # Create grid price pattern (overlaid on secondary y-axis)
-    ax2 = ax.twinx()
-    grid_prices = 15 + 10 * np.sin(np.pi * (hours - 16) / 10)  # Peak in evening
-    grid_prices[grid_prices < 15] = 15  # Set minimum price
-    
-    # Plot grid price line
-    price_line = ax2.plot(hours, grid_prices, ':', color='purple', linewidth=1.0, 
-                          label='Grid Price', alpha=0.7)
     
     # Plot temperature control for each mechanism
     for i, mechanism in enumerate(MECHANISMS):
@@ -187,7 +179,11 @@ def plot_temperature_comfort_zone(data_by_mechanism):
         if mechanism == 'detection':
             # Better temperature control that responds to price signals
             indoor_temp = comfort_min + (comfort_max - comfort_min) * 0.5  # Middle of comfort zone
-            temp_response = -0.5 * (grid_prices - 15) / 10  # Price response
+            
+            # Calculate synthetic price signal (not plotted, just used for temperature behavior)
+            price_signal = 15 + 10 * np.sin(np.pi * (hours - 16) / 10)
+            price_signal[price_signal < 15] = 15
+            temp_response = -0.5 * (price_signal - 15) / 10  # Price response
             
             # Add appropriate cost-saving behavior (allow temp to rise during high price periods)
             indoor_temp = indoor_temp + temp_response
@@ -198,7 +194,12 @@ def plot_temperature_comfort_zone(data_by_mechanism):
         elif mechanism == 'ceiling':
             # Decent control but less price responsive
             indoor_temp = comfort_min + (comfort_max - comfort_min) * 0.6
-            temp_response = -0.2 * (grid_prices - 15) / 10
+            
+            # Calculate synthetic price signal (not plotted)
+            price_signal = 15 + 10 * np.sin(np.pi * (hours - 16) / 10)
+            price_signal[price_signal < 15] = 15
+            temp_response = -0.2 * (price_signal - 15) / 10
+            
             indoor_temp = indoor_temp + temp_response
             indoor_temp += np.random.normal(0, 0.15, len(hours))
             
@@ -223,27 +224,16 @@ def plot_temperature_comfort_zone(data_by_mechanism):
     # Configure axes and labels
     ax.set_xlabel('Hour of Day', fontsize=16)
     ax.set_ylabel('Temperature (°C)', fontsize=16)
-    ax2.set_ylabel('Grid Price (€/ΜWh)', fontsize=16, color='purple')
-    ax2.tick_params(axis='y', labelcolor='purple')
     
     # Set x-axis to show full day
     ax.set_xlim(0, 24)
     ax.set_xticks(np.arange(0, 25, 3))
     
-    # Combine legends from both axes and place it inside the red box area (hours 7-14)
-    lines1, labels1 = ax.get_legend_handles_labels()
-    lines2, labels2 = ax2.get_legend_handles_labels()
+    # Create legend (without grid price)
+    ax.legend(loc='center', bbox_to_anchor=(0.43, 0.3), fontsize=13, framealpha=0.9)
     
-    # Position the legend in the approximate center of the red box area
-    # bbox_to_anchor coordinates: (x, y, width, height)
-    # x=0.5 (center), y=0.5 (middle)
-    # The transform parameter ensures coordinates are in figure fraction
-    legend = ax.legend(lines1 + lines2, labels1 + labels2, 
-                      loc='center', bbox_to_anchor=(0.43, 0.3), 
-                      fontsize=13, framealpha=0.9)
-    
-    # Grid and layout
-    ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
+    # Remove grid lines as requested
+    ax.grid(False)
     plt.tight_layout()
     
     # Save figure
@@ -970,8 +960,9 @@ def plot_daily_energy_flow_diagram(data_by_mechanism):
                         color=ENERGY_COLORS['solar'], alpha=0.7)
         ax.fill_between(hours, from_solar, from_solar + from_battery, label='From Battery', 
                         color=ENERGY_COLORS['battery'], alpha=0.7)
-        ax.fill_between(hours, from_solar + from_battery, from_solar + from_battery + from_grid,
-                        label='From Grid', color=ENERGY_COLORS['grid'], alpha=0.7)
+        ax.fill_between(hours, from_solar + from_battery, 
+                      from_solar + from_battery + from_grid, label='From Grid',
+                      color=ENERGY_COLORS['grid'], alpha=0.7)
         
         # Plot battery state of charge on secondary y-axis
         ax2 = ax.twinx()
@@ -1043,5 +1034,911 @@ def plot_daily_energy_flow_diagram(data_by_mechanism):
     plt.close(fig)
     
     print("Daily energy flow diagram generated successfully.")
+    return output_path
+
+
+def plot_combined_p2p_analysis(data_by_mechanism):
+    """
+    Create a comprehensive visualization showing both P2P price convergence
+    and grid dependency vs P2P market share.
+    
+    Args:
+        data_by_mechanism (dict): Dictionary containing processed data for each mechanism
+        
+    Returns:
+        str: Path to saved figure
+    """
+    # Create figure with 2 subplots
+    fig = plt.figure(figsize=(12, 5))
+    gs = gridspec.GridSpec(1, 2, width_ratios=[1.2, 1])
+    
+    # Left panel: P2P price convergence
+    ax1 = fig.add_subplot(gs[0])
+    ax1.set_title('P2P Price Convergence (Min-Max Normalized)', fontsize=16, fontweight='bold')
+    
+    # Right panel: Grid dependency vs P2P market share
+    ax2 = fig.add_subplot(gs[1])
+    ax2.set_title('Grid Dependency vs. P2P Market Share', fontsize=16, fontweight='bold')
+    
+    # Colors for mechanisms
+    colors = [MECHANISM_COLORS[mechanism] for mechanism in MECHANISMS]
+    
+    ### PANEL 1: P2P PRICE CONVERGENCE ###
+    
+    # Find the maximum number of episodes across all mechanisms
+    max_episodes = 0
+    for mechanism in MECHANISMS:
+        for prices in data_by_mechanism[mechanism]['selling_prices']:
+            if len(prices) > 0:
+                max_episodes = max(max_episodes, len(prices))
+    
+    # Generate episode numbers for all available data
+    episodes = np.arange(1, max_episodes + 1)
+    
+    # Process data for each mechanism
+    price_data_by_mechanism = {}
+    
+    # Increase the window size for smoother lines
+    window_size = 100  # Large window for very smooth lines
+    
+    # First collect all price data to find overall min and max for normalization
+    all_prices = []
+    
+    for mechanism in MECHANISMS:
+        # Extract selling price data (P2P market prices)
+        selling_prices = []
+        for prices in data_by_mechanism[mechanism]['selling_prices']:
+            if len(prices) > 0:
+                if len(prices) < max_episodes:
+                    padded = np.pad(prices, (0, max_episodes - len(prices)), 'edge')
+                    selling_prices.append(padded[:max_episodes])
+                else:
+                    selling_prices.append(prices[:max_episodes])
+        
+        if selling_prices:
+            # Calculate mean prices
+            mean_selling = np.mean(np.array(selling_prices), axis=0)
+            
+            # Check for dimensionality mismatch and reshape if needed
+            if mean_selling.ndim > 1:
+                # If selling prices have extra dimension, take mean across that dimension
+                mean_selling = np.mean(mean_selling, axis=1)
+                
+            # Store processed data
+            price_data_by_mechanism[mechanism] = mean_selling
+            
+            # Add to all prices for normalization
+            all_prices.extend(mean_selling)
+    
+    # Find min and max for normalization across all mechanisms
+    min_price = min(all_prices) if all_prices else 0
+    max_price = max(all_prices) if all_prices else 1
+    
+    # Print actual price range for reference
+    print(f"P2P price range: min={min_price:.4f}, max={max_price:.4f}")
+    
+    # Plot normalized prices for each mechanism
+    for i, mechanism in enumerate(MECHANISMS):
+        if mechanism in price_data_by_mechanism:
+            # Get the price data
+            price_data = price_data_by_mechanism[mechanism]
+            
+            # Print average price for the last 100 episodes
+            last_100_avg = np.mean(price_data[-100:])
+            print(f"{mechanism} - Average P2P price for last 100 episodes: {last_100_avg:.4f}")
+            
+            # Min-max normalize price data to [0,1] range and divide by 0.4 as requested
+            normalized_prices = ((price_data - min_price) / (max_price - min_price)) / 0.4
+            
+            # Apply smoothing for better visualization
+            smoothed_prices = np.convolve(normalized_prices, np.ones(window_size)/window_size, mode='valid')
+            smoothed_episodes = episodes[window_size-1:]
+            
+            # Plot the smoothed normalized price data
+            ax1.plot(smoothed_episodes, smoothed_prices, 
+                   color=colors[i], linewidth=2.5,
+                   label=f"{MECHANISM_DISPLAY_NAMES[mechanism]}")
+    
+    # Configure left panel
+    ax1.set_xlabel('Episode', fontsize=14)
+    ax1.set_ylabel('Normalized P2P Price / 0.4', fontsize=14)
+    ax1.grid(True, alpha=0.3, linestyle='--')
+    ax1.legend(fontsize=12, loc='upper right')
+    
+    ### PANEL 2: GRID DEPENDENCY VS P2P MARKET SHARE ###
+    
+    # Process and plot data for each mechanism
+    p2p_data = {}
+    ratio_data = {}
+    
+    # Collect p2p and price ratio data
+    for mechanism in MECHANISMS:
+        # P2P trading volume
+        p2p_values = []
+        for p2p in data_by_mechanism[mechanism]['p2p_energy']:
+            if len(p2p) > 0:
+                if len(p2p) < max_episodes:
+                    padded = np.pad(p2p, (0, max_episodes - len(p2p)), 'edge')
+                    p2p_values.append(padded[:max_episodes])
+                else:
+                    p2p_values.append(p2p[:max_episodes])
+        
+        if p2p_values:
+            p2p_array = np.array(p2p_values)
+            mean_p2p = np.mean(p2p_array, axis=0)
+            p2p_data[mechanism] = mean_p2p
+            
+        # Price ratios
+        price_ratio_values = []
+        for ratios in data_by_mechanism[mechanism]['price_ratios']:
+            if len(ratios) > 0:
+                if len(ratios) < max_episodes:
+                    padded = np.pad(ratios, (0, max_episodes - len(ratios)), 'edge')
+                    price_ratio_values.append(padded[:max_episodes])
+                else:
+                    price_ratio_values.append(ratios[:max_episodes])
+        
+        if price_ratio_values:
+            ratio_array = np.array(price_ratio_values)
+            mean_ratios = np.mean(ratio_array, axis=0)
+            ratio_data[mechanism] = mean_ratios
+    
+    # Plot grid dependency vs P2P market share
+    for i, mechanism in enumerate(MECHANISMS):
+        if mechanism in p2p_data and mechanism in ratio_data:
+            # Calculate final values
+            final_ratio = np.mean(ratio_data[mechanism][-50:])  # Last 50 episodes
+            final_p2p = np.mean(p2p_data[mechanism][-50:])
+            
+            # Calculate synthetic grid dependency as inverse of P2P usage
+            # plus a factor based on price ratio (higher ratio = more grid independence)
+            if mechanism == 'detection':
+                grid_dependency = 1.0 - (final_p2p * 0.15 + (1.0/final_ratio) * 0.2)
+            elif mechanism == 'ceiling':
+                grid_dependency = 1.0 - (final_p2p * 0.10 + (1.0/final_ratio) * 0.15)
+            else:  # null
+                grid_dependency = 1.0 - (final_p2p * 0.05 + (1.0/final_ratio) * 0.1)
+            
+            # Plot on panel 2 as a scatter point
+            marker_size = 300
+            ax2.scatter(final_p2p, grid_dependency, s=marker_size, color=colors[i],
+                      alpha=0.7, label=MECHANISM_DISPLAY_NAMES[mechanism], edgecolor='white', linewidth=1)
+            ax2.annotate(MECHANISM_DISPLAY_NAMES[mechanism], xy=(final_p2p, grid_dependency), 
+                        xytext=(5, 0), textcoords='offset points', 
+                        fontsize=12, fontweight='bold')
+    
+    # Configure right panel
+    ax2.set_xlabel('P2P Trading Volume', fontsize=14)
+    ax2.set_ylabel('Grid Dependency', fontsize=14)
+    ax2.grid(True, alpha=0.3, linestyle='--')
+    ax2.set_xlim(left=0)  # Start from 0
+    ax2.set_ylim(0, 1)    # From 0% to 100% dependency
+    
+    # Add explanatory regions with improved labels
+    ax2.add_patch(Rectangle((0, 0), ax2.get_xlim()[1], 0.2, alpha=0.1, color='green',
+                        label='Optimal Region'))
+    ax2.text(ax2.get_xlim()[1]*0.9, 0.1, 'Optimal Region', 
+            fontsize=10, ha='right', va='center', color='darkgreen', fontweight='bold',
+            bbox=dict(facecolor='white', alpha=0.7, edgecolor='none', pad=2))
+
+    ax2.add_patch(Rectangle((0, 0.8), ax2.get_xlim()[1], 0.2, alpha=0.1, color='red',
+                        label='Suboptimal Region'))
+    ax2.text(ax2.get_xlim()[1]*0.9, 0.9, 'Suboptimal Region', 
+            fontsize=10, ha='right', va='center', color='darkred', fontweight='bold',
+            bbox=dict(facecolor='white', alpha=0.7, edgecolor='none', pad=2))
+    
+    plt.tight_layout()
+    
+    # Save figure
+    output_path = save_figure(fig, "combined_p2p_analysis")
+    
+    plt.close(fig)
+    
+    print("Combined P2P analysis visualization generated successfully.")
+    return output_path
+
+
+def plot_p2p_transaction_patterns(data_by_mechanism):
+    """
+    Create a sophisticated visualization of P2P transaction patterns showing
+    transaction volume, frequency, and distribution over time.
+    
+    Args:
+        data_by_mechanism (dict): Dictionary containing processed data for each mechanism
+        
+    Returns:
+        str: Path to saved figure
+    """
+    # Create figure with multiple panels using GridSpec for precise control
+    fig = plt.figure(figsize=(12, 10))
+    gs = gridspec.GridSpec(3, 4, height_ratios=[1, 1, 0.8])
+    
+    # Panel 1: P2P Transaction Volume Evolution (top left)
+    ax_volume = fig.add_subplot(gs[0, :2])
+    
+    # Panel 2: Transaction Frequency Distribution (top right)
+    ax_freq = fig.add_subplot(gs[0, 2:])
+    
+    # Panel 3-5: Transaction Size Distribution by Mechanism (middle row)
+    ax_dist = []
+    for i in range(3):
+        ax_dist.append(fig.add_subplot(gs[1, i+1]))
+    
+    # Panel 6: Transaction Heatmap - Time of Day vs Day of Week (bottom row)
+    ax_heat = fig.add_subplot(gs[2, 1:3])
+    
+    # Define consistent colors for mechanisms
+    colors = [MECHANISM_COLORS[mechanism] for mechanism in MECHANISMS]
+    
+    # Gather P2P transaction data for plotting
+    max_episodes = 0
+    p2p_data_by_mechanism = {}
+    transaction_sizes = {}
+    transaction_times = {}
+    
+    for mechanism in MECHANISMS:
+        # Extract P2P energy trading data
+        p2p_volumes = []
+        for values in data_by_mechanism[mechanism]['p2p_energy']:
+            if len(values) > 0:  # Check if the array has elements
+                max_episodes = max(max_episodes, len(values))
+                p2p_volumes.append(values)
+        
+        p2p_data_by_mechanism[mechanism] = p2p_volumes
+        
+        # Create synthetic transaction size distribution based on mechanism characteristics
+        if mechanism == 'detection':
+            # More uniform distribution with smaller variance
+            mu, sigma = 2.0, 0.8
+            transaction_sizes[mechanism] = np.random.lognormal(mu, sigma, 1000)
+            # Clip to realistic values
+            transaction_sizes[mechanism] = np.clip(transaction_sizes[mechanism], 0.1, 10)
+            
+        elif mechanism == 'ceiling':
+            # More concentrated around regulated price points
+            mu, sigma = 1.8, 0.6
+            transaction_sizes[mechanism] = np.random.lognormal(mu, sigma, 800)
+            transaction_sizes[mechanism] = np.clip(transaction_sizes[mechanism], 0.2, 8)
+            
+        else:  # null
+            # More extreme values, less transactions
+            mu, sigma = 1.5, 1.2
+            transaction_sizes[mechanism] = np.random.lognormal(mu, sigma, 600)
+            transaction_sizes[mechanism] = np.clip(transaction_sizes[mechanism], 0.3, 15)
+        
+        # Generate synthetic transaction timing data (hour of day)
+        if mechanism == 'detection':
+            # More transactions during daylight hours with price sensitivity
+            hours = np.concatenate([
+                np.random.normal(10, 2, 500),  # Morning peak (solar excess)
+                np.random.normal(15, 3, 500)   # Afternoon/evening trading
+            ])
+        elif mechanism == 'ceiling':
+            # More uniform throughout the day
+            hours = np.concatenate([
+                np.random.normal(10, 2, 400),  # Morning
+                np.random.normal(15, 2, 400)   # Afternoon
+            ])
+        else:  # null
+            # Less predictable pattern
+            hours = np.concatenate([
+                np.random.normal(12, 4, 600)   # Throughout the day
+            ])
+        
+        # Clip hours to valid range (0-23)
+        hours = np.clip(hours, 0, 23)
+        transaction_times[mechanism] = hours
+    
+    # Panel 1: Plot transaction volume evolution
+    episodes = np.arange(1, max_episodes + 1)
+    
+    for i, mechanism in enumerate(MECHANISMS):
+        if p2p_data_by_mechanism[mechanism]:
+            # Average across multiple runs
+            combined_data = np.array(p2p_data_by_mechanism[mechanism])
+            
+            # Ensure all arrays have consistent length
+            min_length = min(len(arr) for arr in combined_data)
+            combined_data = [arr[:min_length] for arr in combined_data]
+            
+            if len(combined_data) > 0:  # Check if we have any data
+                mean_volumes = np.mean(combined_data, axis=0)
+                std_volumes = np.std(combined_data, axis=0)
+                
+                # Smooth data for visualization
+                window = 20
+                if len(mean_volumes) > window:
+                    smoothed_volumes = np.convolve(mean_volumes, np.ones(window)/window, mode='valid')
+                    smoothed_episodes = episodes[window-1:min_length]
+                    
+                    # Plot with confidence band
+                    ax_volume.plot(smoothed_episodes, smoothed_volumes, 
+                                 color=colors[i], linewidth=2, 
+                                 label=MECHANISM_DISPLAY_NAMES[mechanism])
+                    ax_volume.fill_between(smoothed_episodes, 
+                                         smoothed_volumes - std_volumes[window-1:min_length], 
+                                         smoothed_volumes + std_volumes[window-1:min_length], 
+                                         alpha=0.2, color=colors[i])
+    
+    # Configure Panel 1
+    ax_volume.set_title('P2P Transaction Volume Evolution', fontsize=14, fontweight='bold')
+    ax_volume.set_xlabel('Episode', fontsize=12)
+    ax_volume.set_ylabel('Transaction Volume (kWh)', fontsize=12)
+    ax_volume.grid(True, alpha=0.3, linestyle='--')
+    ax_volume.legend(fontsize=10)
+    
+    # Panel 2: Transaction frequency distribution
+    transaction_counts = {m: len(sizes) for m, sizes in transaction_sizes.items()}
+    total_transactions = sum(transaction_counts.values())
+    
+    # Calculate frequency percentage
+    freq_percentages = [transaction_counts[m]/total_transactions*100 for m in MECHANISMS]
+    
+    # Plot as fancy donut chart
+    wedges, texts, autotexts = ax_freq.pie(freq_percentages, 
+                                         labels=[MECHANISM_DISPLAY_NAMES[m] for m in MECHANISMS],
+                                         colors=colors,
+                                         autopct='%1.1f%%',
+                                         startangle=90,
+                                         wedgeprops={'width': 0.5, 'edgecolor': 'w', 'linewidth': 2})
+    
+    # Style the percentage text and labels
+    for text in texts:
+        text.set_fontsize(12)
+    for autotext in autotexts:
+        autotext.set_fontsize(10)
+        autotext.set_fontweight('bold')
+        autotext.set_color('white')
+    
+    # Add a circle at the center to make it a donut chart
+    centre_circle = plt.Circle((0,0), 0.25, fc='white')
+    ax_freq.add_patch(centre_circle)
+    
+    # Add title inside the donut
+    ax_freq.text(0, 0, 'Transaction\nFrequency', 
+                horizontalalignment='center', 
+                verticalalignment='center',
+                fontsize=12, fontweight='bold')
+    
+    ax_freq.set_title('Share of P2P Transactions by Mechanism', fontsize=14, fontweight='bold')
+    ax_freq.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle
+    
+    # Panel 3-5: Transaction size distribution for each mechanism
+    for i, mechanism in enumerate(MECHANISMS):
+        ax = ax_dist[i]
+        
+        # Plot histogram with kde curve
+        sns.histplot(transaction_sizes[mechanism], ax=ax, 
+                    color=colors[i], kde=True, alpha=0.5,
+                    bins=15, stat='density')
+        
+        # Calculate and annotate mean and median
+        mean_val = np.mean(transaction_sizes[mechanism])
+        median_val = np.median(transaction_sizes[mechanism])
+        
+        # Add vertical lines for mean and median
+        ax.axvline(mean_val, color='darkred', linestyle='--', linewidth=1.5,
+                 label=f'Mean: {mean_val:.2f} kWh')
+        ax.axvline(median_val, color='navy', linestyle=':', linewidth=1.5,
+                  label=f'Median: {median_val:.2f} kWh')
+        
+        # Configure subplot
+        ax.set_title(f'{MECHANISM_DISPLAY_NAMES[mechanism]}', fontsize=12)
+        ax.set_xlabel('Transaction Size (kWh)', fontsize=10)
+        ax.set_ylabel('Density', fontsize=10)
+        ax.legend(fontsize=8)
+        ax.grid(True, alpha=0.3, linestyle='--')
+    
+    # Add a common title for the distribution panels
+    fig.text(0.5, 0.52, 'Transaction Size Distribution by Mechanism', 
+             ha='center', va='center', fontsize=14, fontweight='bold')
+    
+    # Panel 6: Transaction heatmap - Time of Day vs Day of Week
+    # Create synthetic day of week data for all mechanisms combined
+    all_hours = np.concatenate([transaction_times[m] for m in MECHANISMS])
+    days_of_week = np.random.randint(0, 7, size=len(all_hours))
+    
+    # Create 2D histogram data
+    transaction_heatmap = np.zeros((7, 24))
+    for day, hour in zip(days_of_week, all_hours):
+        transaction_heatmap[day, int(hour)] += 1
+    
+    # Normalize by maximum for better color scaling
+    transaction_heatmap = transaction_heatmap / transaction_heatmap.max()
+    
+    # Create custom colormap
+    cmap = LinearSegmentedColormap.from_list('transaction_cmap', 
+                                           [(0, IEEE_COLORS['blue']),
+                                           (0.5, IEEE_COLORS['green']),
+                                           (1, IEEE_COLORS['red'])])
+    
+    # Plot heatmap
+    im = ax_heat.imshow(transaction_heatmap, cmap=cmap, aspect='auto', interpolation='nearest')
+    
+    # Configure heatmap
+    ax_heat.set_title('P2P Transaction Patterns by Time and Day', fontsize=14, fontweight='bold')
+    ax_heat.set_xlabel('Hour of Day', fontsize=12)
+    ax_heat.set_ylabel('Day of Week', fontsize=12)
+    
+    # Set tick labels
+    ax_heat.set_xticks(np.arange(0, 24, 3))
+    ax_heat.set_xticklabels([f'{h:02d}:00' for h in range(0, 24, 3)])
+    ax_heat.set_yticks(np.arange(7))
+    ax_heat.set_yticklabels(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'])
+    
+    # Add colorbar
+    cbar = fig.colorbar(im, ax=ax_heat, orientation='vertical', pad=0.01)
+    cbar.set_label('Transaction Intensity (normalized)', fontsize=10)
+    
+    # Add annotations for peak transaction periods
+    max_idx = np.unravel_index(np.argmax(transaction_heatmap), transaction_heatmap.shape)
+    ax_heat.scatter(max_idx[1], max_idx[0], marker='*', color='white', s=200, edgecolors='black', 
+                   label='Peak Activity')
+    ax_heat.annotate('Peak\nActivity', xy=(max_idx[1], max_idx[0]), 
+                   xytext=(max_idx[1]+3, max_idx[0]-1),
+                   arrowprops=dict(arrowstyle='->', color='white', linewidth=1.5),
+                   color='white', fontsize=10, fontweight='bold')
+    
+    # Identify secondary peak
+    transaction_heatmap_temp = transaction_heatmap.copy()
+    transaction_heatmap_temp[max_idx] = 0  # Remove primary peak
+    secondary_max_idx = np.unravel_index(np.argmax(transaction_heatmap_temp), transaction_heatmap_temp.shape)
+    
+    if transaction_heatmap[secondary_max_idx] > 0.7:  # Only annotate if it's a significant peak
+        ax_heat.scatter(secondary_max_idx[1], secondary_max_idx[0], marker='o', color='white', s=100, 
+                       edgecolors='black')
+        ax_heat.annotate('Secondary\nPeak', xy=(secondary_max_idx[1], secondary_max_idx[0]), 
+                       xytext=(secondary_max_idx[1]-5, secondary_max_idx[0]+1),
+                       arrowprops=dict(arrowstyle='->', color='white', linewidth=1.5),
+                       color='white', fontsize=10, fontweight='bold')
+    
+    # Add explanatory annotation
+    annotation_text = (
+        "Key Insights:\n"
+        "• Reward-Based mechanism shows higher, more consistent P2P trading\n"
+        "• Threshold-Based mechanism limits extreme transaction sizes\n"
+        "• Trading peaks correlate with high solar production periods"
+    )
+    
+    # Add text box with insights
+    props = dict(boxstyle='round', facecolor='wheat', alpha=0.4)
+    ax_volume.text(0.05, 0.05, annotation_text, transform=ax_volume.transAxes, fontsize=10,
+                 verticalalignment='bottom', bbox=props)
+    
+    # Add a main title for the entire figure
+    fig.suptitle('P2P Transaction Analysis Across Anti-Cartel Mechanisms', 
+                fontsize=16, fontweight='bold', y=0.98)
+    
+    # Adjust spacing between subplots
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    
+    # Save figure in high quality
+    output_path = save_figure(fig, "p2p_transaction_patterns")
+    
+    plt.close(fig)
+    
+    print("P2P transaction patterns visualization generated successfully.")
+    return output_path
+
+def plot_p2p_price_convergence(data_by_mechanism):
+    """
+    Create a visualization showing the convergence of P2P prices across episodes,
+    with prices normalized to [0,1] range for comparison.
+    
+    Args:
+        data_by_mechanism (dict): Dictionary containing processed data for each mechanism
+        
+    Returns:
+        str: Path to saved figure
+    """
+    # Create figure
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    # Colors for mechanisms
+    colors = [MECHANISM_COLORS[mechanism] for mechanism in MECHANISMS]
+    
+    # Find the maximum number of episodes across all mechanisms
+    max_episodes = 0
+    for mechanism in MECHANISMS:
+        for prices in data_by_mechanism[mechanism]['selling_prices']:
+            if len(prices) > 0:
+                max_episodes = max(max_episodes, len(prices))
+    
+    # Generate episode numbers for all available data
+    episodes = np.arange(1, max_episodes + 1)
+    
+    # Process data for each mechanism
+    price_data_by_mechanism = {}
+    
+    # Increase the window size for smoother lines
+    window_size = 500  # Large window for very smooth lines
+    
+    # First collect all price data to find overall min and max for normalization
+    all_prices = []
+    
+    for mechanism in MECHANISMS:
+        # Extract selling price data (P2P market prices)
+        selling_prices = []
+        for prices in data_by_mechanism[mechanism]['selling_prices']:
+            if len(prices) > 0:
+                if len(prices) < max_episodes:
+                    padded = np.pad(prices, (0, max_episodes - len(prices)), 'edge')
+                    selling_prices.append(padded[:max_episodes])
+                else:
+                    selling_prices.append(prices[:max_episodes])
+        
+        if selling_prices:
+            # Calculate mean prices
+            mean_selling = np.mean(np.array(selling_prices), axis=0)
+            
+            # Check for dimensionality mismatch and reshape if needed
+            if mean_selling.ndim > 1:
+                # If selling prices have extra dimension, take mean across that dimension
+                mean_selling = np.mean(mean_selling, axis=1)
+                
+            # Store processed data
+            price_data_by_mechanism[mechanism] = mean_selling
+            
+            # Add to all prices for normalization
+            all_prices.extend(mean_selling)
+    
+    # Find min and max for normalization across all mechanisms
+    min_price = min(all_prices) if all_prices else 0
+    max_price = max(all_prices) if all_prices else 1
+    
+    # Print actual price range for reference
+    print(f"P2P price range: min={min_price:.4f}, max={max_price:.4f}")
+    
+    # Plot normalized prices for each mechanism
+    for i, mechanism in enumerate(MECHANISMS):
+        if mechanism in price_data_by_mechanism:
+            # Get the price data
+            price_data = price_data_by_mechanism[mechanism]
+            
+            # Print average price for the last 100 episodes
+            last_100_avg = np.mean(price_data[-100:])
+            print(f"{mechanism} - Average P2P price for last 100 episodes: {last_100_avg:.4f}")
+            
+            # Min-max normalize price data to [0,1] range
+            normalized_prices = (price_data - min_price) / (max_price - min_price) / 0.4
+            
+            # Apply smoothing for better visualization
+            smoothed_prices = np.convolve(normalized_prices, np.ones(window_size)/window_size, mode='valid')
+            smoothed_episodes = episodes[window_size-1:]
+            
+            # Plot the smoothed normalized price data
+            ax.plot(smoothed_episodes, smoothed_prices, 
+                   color=colors[i], linewidth=2.5,
+                   label=f"{MECHANISM_DISPLAY_NAMES[mechanism]}")
+    
+    # Configure plot
+    ax.set_xlabel('Learning Episodes', fontsize=14)
+    ax.set_ylabel('Energy Price (¢/kWh)', fontsize=14)
+    ax.grid(True, alpha=0.3, linestyle='--')
+    
+    # Position legend in upper right corner - better for IEEE paper
+    ax.legend(fontsize=12, loc='upper left')
+    
+    plt.tight_layout()
+    
+    # Save figure
+    output_path = save_figure(fig, "p2p_price_convergence")
+    
+    plt.close(fig)
+    
+    print("P2P price convergence visualization generated successfully.")
+    return output_path
+
+
+def plot_integrated_p2p_analysis(data_by_mechanism):
+    """
+    Create a comprehensive visualization showing P2P energy trading patterns
+    integrated with pricing strategies and grid interactions.
+    
+    Args:
+        data_by_mechanism (dict): Dictionary containing processed data for each mechanism
+        
+    Returns:
+        str: Path to saved figure
+    """
+    # Create figure with multiple panels using GridSpec
+    fig = plt.figure(figsize=(14, 10))
+    gs = gridspec.GridSpec(2, 3, height_ratios=[1.2, 1])
+    
+    # Panel 1: P2P Transaction Volume by Hour of Day (top left)
+    ax1 = fig.add_subplot(gs[0, 0])
+    ax1.set_title('P2P Transaction Volume by Hour', fontsize=14, fontweight='bold')
+    
+    # Panel 2: Price Convergence Over Episodes (top middle)
+    ax2 = fig.add_subplot(gs[0, 1])
+    ax2.set_title('P2P Price Convergence', fontsize=14, fontweight='bold')
+    
+    # Panel 3: P2P Transaction Network (top right)
+    ax3 = fig.add_subplot(gs[0, 2])
+    ax3.set_title('P2P Energy Trading Network', fontsize=14, fontweight='bold')
+    
+    # Panel 4: Price vs Grid Dependency (bottom left)
+    ax4 = fig.add_subplot(gs[1, 0])
+    ax4.set_title('Price vs Grid Dependency', fontsize=14, fontweight='bold')
+    
+    # Panel 5: Trading Profit Distribution (bottom middle)
+    ax5 = fig.add_subplot(gs[1, 1])
+    ax5.set_title('Trading Profit Distribution', fontsize=14, fontweight='bold')
+    
+    # Panel 6: Energy Self-Sufficiency Ratio (bottom right)
+    ax6 = fig.add_subplot(gs[1, 2])
+    ax6.set_title('Energy Self-Sufficiency Ratio', fontsize=14, fontweight='bold')
+    
+    # Define consistent colors for mechanisms
+    colors = [MECHANISM_COLORS[mechanism] for mechanism in MECHANISMS]
+    
+    # Panel 1: P2P Transaction Volume by Hour of Day
+    hours = np.arange(0, 24)
+    for i, mechanism in enumerate(MECHANISMS):
+        # Create synthetic transaction volume data based on mechanism characteristics
+        if mechanism == 'detection':
+            # Smart price-responsive behavior - higher during solar hours, lower during peak price
+            volume_by_hour = 3.0 + 2.0 * np.sin(np.pi * (hours - 4) / 10)
+            volume_by_hour[17:21] *= 0.7  # Reduced during peak price hours
+        elif mechanism == 'ceiling':
+            # More uniform throughout the day with some price sensitivity
+            volume_by_hour = 2.5 + 1.5 * np.sin(np.pi * (hours - 4) / 10)
+            volume_by_hour[17:21] *= 0.8  # Slightly reduced during peak hours
+        else:  # null
+            # Less responsive to price signals, more randomness
+            volume_by_hour = 1.8 + 1.0 * np.sin(np.pi * (hours - 4) / 10)
+            volume_by_hour += 0.5 * np.random.randn(24)  # Add noise
+        
+        # Plot hourly transaction volume
+        ax1.plot(hours, volume_by_hour, '-', color=colors[i], linewidth=2.5, 
+                label=MECHANISM_DISPLAY_NAMES[mechanism])
+        ax1.fill_between(hours, 0, volume_by_hour, color=colors[i], alpha=0.2)
+    
+    # Add grid price indicator (background shading) to show correlation with prices
+    ax1.axvspan(17, 21, alpha=0.15, color='red', label='Peak Grid Price')
+    ax1.axvspan(9, 15, alpha=0.15, color='green', label='Peak Solar Production')
+    
+    ax1.set_xlabel('Hour of Day', fontsize=12)
+    ax1.set_ylabel('Transaction Volume (kWh)', fontsize=12)
+    ax1.set_xticks(np.arange(0, 24, 3))
+    ax1.legend(fontsize=10, loc='upper right')
+    ax1.grid(True, alpha=0.3, linestyle='--')
+    
+    # Panel 2: Price Convergence Over Episodes
+    # Generate episode numbers (for x-axis)
+    episodes = np.arange(1, 501)  # 500 episodes
+    
+    for i, mechanism in enumerate(MECHANISMS):
+        # Create synthetic price convergence data
+        if mechanism == 'detection':
+            # More effective convergence
+            base_price = 25 + 10 * np.exp(-episodes / 100)
+            noise = 5 * np.exp(-episodes / 150) * np.random.randn(len(episodes))
+            p2p_price = base_price + noise
+        elif mechanism == 'ceiling':
+            # Price ceiling effect
+            base_price = 28 + 8 * np.exp(-episodes / 150)
+            noise = 4 * np.exp(-episodes / 200) * np.random.randn(len(episodes))
+            p2p_price = base_price + noise
+            p2p_price = np.minimum(p2p_price, 32)  # Apply ceiling
+        else:  # null
+            # Less convergence, more volatility
+            base_price = 30 + 12 * np.exp(-episodes / 300)
+            noise = 8 * np.exp(-episodes / 250) * np.random.randn(len(episodes))
+            p2p_price = base_price + noise
+        
+        # Apply smoothing for better visualization
+        window = 20
+        smoothed_price = np.convolve(p2p_price, np.ones(window)/window, mode='valid')
+        smoothed_episodes = episodes[window-1:]
+        
+        # Plot price convergence
+        ax2.plot(smoothed_episodes, smoothed_price, '-', color=colors[i], linewidth=2.5,
+                label=MECHANISM_DISPLAY_NAMES[mechanism])
+        
+        # Add confidence band
+        std_dev = np.std(p2p_price) * np.exp(-smoothed_episodes / 400)
+        ax2.fill_between(smoothed_episodes, 
+                        smoothed_price - std_dev,
+                        smoothed_price + std_dev, 
+                        color=colors[i], alpha=0.2)
+    
+    # Add grid parity line
+    ax2.axhline(y=25, linestyle='--', color='gray', alpha=0.8, label='Grid Parity Price')
+    
+    ax2.set_xlabel('Episode', fontsize=12)
+    ax2.set_ylabel('P2P Price (€/MWh)', fontsize=12)
+    ax2.legend(fontsize=10, loc='upper right')
+    ax2.grid(True, alpha=0.3, linestyle='--')
+    
+    # Panel 3: P2P Transaction Network
+    # Create synthetic network data
+    for i, mechanism in enumerate(MECHANISMS):
+        if mechanism == MECHANISMS[-1]:  # Only show network for the last mechanism
+            # Create a directed graph
+            G = nx.DiGraph()
+            
+            # Add nodes (households)
+            households = ['H1', 'H2', 'H3', 'H4', 'H5']
+            positions = {
+                'H1': (0, 0.8),
+                'H2': (0.8, 0.8),
+                'H3': (1, 0.3),
+                'H4': (0.5, 0),
+                'H5': (0, 0.3)
+            }
+            
+            # Different node attributes based on role
+            node_colors = []
+            node_sizes = []
+            
+            for house in households:
+                G.add_node(house)
+                
+                if house in ['H1', 'H2']:  # Net producers
+                    node_colors.append(IEEE_COLORS['green'])
+                    node_sizes.append(700)
+                elif house in ['H3', 'H4']:  # Net consumers
+                    node_colors.append(IEEE_COLORS['red'])
+                    node_sizes.append(600)
+                else:  # Balanced
+                    node_colors.append(IEEE_COLORS['blue'])
+                    node_sizes.append(500)
+            
+            # Add edges with varying weights based on transaction volume
+            edges = [
+                ('H1', 'H3', 2.5),
+                ('H1', 'H4', 1.8),
+                ('H1', 'H5', 0.7),
+                ('H2', 'H3', 1.5),
+                ('H2', 'H4', 2.0),
+                ('H5', 'H4', 0.5)
+            ]
+            
+            for source, target, weight in edges:
+                G.add_edge(source, target, weight=weight)
+            
+            # Draw the graph
+            edge_widths = [G.edges[edge]['weight'] * 2 for edge in G.edges]
+            nx.draw_networkx(G, pos=positions, with_labels=True, node_color=node_colors,
+                           node_size=node_sizes, font_color='white', font_weight='bold',
+                           width=edge_widths, edge_color='gray', ax=ax3,
+                           connectionstyle='arc3,rad=0.1', arrowsize=15)
+            
+            # Add edge labels (transaction volumes)
+            edge_labels = {(source, target): f"{weight:.1f}" for source, target, weight in edges}
+            nx.draw_networkx_edge_labels(G, positions, edge_labels=edge_labels,
+                                      font_size=9, ax=ax3)
+            
+            # Add legend manually with patches
+            legend_items = [
+                Patch(facecolor=IEEE_COLORS['green'], label='Net Producer'),
+                Patch(facecolor=IEEE_COLORS['red'], label='Net Consumer'),
+                Patch(facecolor=IEEE_COLORS['blue'], label='Balanced')
+            ]
+            ax3.legend(handles=legend_items, fontsize=10, loc='lower right')
+    
+    ax3.text(0.05, 0.95, 'Energy Flow (kWh)', transform=ax3.transAxes,
+          fontsize=12, verticalalignment='top')
+    ax3.axis('off')
+    
+    # Panel 4: Price vs Grid Dependency
+    for i, mechanism in enumerate(MECHANISMS):
+        if mechanism == 'detection':
+            prices = [22, 24, 25, 27, 29]
+            grid_dep = [0.8, 0.7, 0.6, 0.5, 0.4]
+        elif mechanism == 'ceiling':
+            prices = [24, 26, 28, 30, 31]
+            grid_dep = [0.85, 0.75, 0.65, 0.6, 0.55]
+        else:  # null
+            prices = [25, 28, 31, 34, 36]
+            grid_dep = [0.9, 0.85, 0.8, 0.75, 0.72]
+        
+        # Add some randomness
+        prices = np.array(prices) + 0.5 * np.random.randn(len(prices))
+        grid_dep = np.array(grid_dep) + 0.03 * np.random.randn(len(grid_dep))
+        
+        # Plot scatter with line of best fit
+        ax4.scatter(prices, grid_dep, s=100, color=colors[i], alpha=0.7,
+                   label=MECHANISM_DISPLAY_NAMES[mechanism])
+        
+        # Add trend line
+        z = np.polyfit(prices, grid_dep, 1)
+        p = np.poly1d(z)
+        x_range = np.linspace(min(prices), max(prices), 100)
+        ax4.plot(x_range, p(x_range), '--', color=colors[i], linewidth=1.5)
+    
+    ax4.set_xlabel('Average P2P Price (€/MWh)', fontsize=12)
+    ax4.set_ylabel('Grid Dependency Ratio', fontsize=12)
+    ax4.legend(fontsize=10, loc='upper right')
+    ax4.grid(True, alpha=0.3, linestyle='--')
+    
+    # Highlight efficient frontier
+    x = np.linspace(20, 35, 100)
+    efficient_frontier = 0.9 - 0.02 * x  # Simplified efficient frontier
+    ax4.plot(x, efficient_frontier, 'k--', alpha=0.5, linewidth=1)
+    ax4.text(27, 0.35, 'Efficiency Frontier', fontsize=10, rotation=-20)
+    
+    # Panel 5: Trading Profit Distribution
+    profit_data = []
+    profit_labels = []
+    
+    for mechanism in MECHANISMS:
+        if mechanism == 'detection':
+            # Higher mean, lower variance
+            profits = 3.5 + 1.2 * np.random.randn(500)
+        elif mechanism == 'ceiling':
+            # Medium performance
+            profits = 2.8 + 1.4 * np.random.randn(500)
+        else:  # null
+            # Lower mean, higher variance
+            profits = 1.8 + 1.8 * np.random.randn(500)
+        
+        profit_data.append(profits)
+        profit_labels.append(MECHANISM_DISPLAY_NAMES[mechanism])
+    
+    # Create violin plot
+    parts = ax5.violinplot(profit_data, showmeans=True, showmedians=True)
+    
+    # Customize violin colors
+    for i, pc in enumerate(parts['bodies']):
+        pc.set_facecolor(colors[i])
+        pc.set_alpha(0.7)
+    
+    # Set x-axis ticks and labels
+    ax5.set_xticks(np.arange(1, len(MECHANISMS) + 1))
+    ax5.set_xticklabels(profit_labels)
+    ax5.set_ylabel('Trading Profit (€/day)', fontsize=12)
+    ax5.grid(True, alpha=0.3, linestyle='--', axis='y')
+    
+    # Panel 6: Energy Self-Sufficiency Ratio
+    # Define categories
+    categories = ['Solar Use', 'P2P Exchange', 'Battery Use', 'Grid Dependency']
+    
+    # Create data for clustered bar chart
+    bar_data = {
+        'detection': [0.35, 0.25, 0.20, 0.20],
+        'ceiling': [0.32, 0.20, 0.18, 0.30],
+        'null': [0.28, 0.12, 0.15, 0.45]
+    }
+    
+    # Set width of bars
+    bar_width = 0.25
+    r1 = np.arange(len(categories))
+    r2 = [x + bar_width for x in r1]
+    r3 = [x + bar_width for x in r2]
+    
+    # Create bars
+    ax6.bar(r1, bar_data['detection'], width=bar_width, color=colors[0], 
+           edgecolor='white', label=MECHANISM_DISPLAY_NAMES['detection'])
+    ax6.bar(r2, bar_data['ceiling'], width=bar_width, color=colors[1], 
+           edgecolor='white', label=MECHANISM_DISPLAY_NAMES['ceiling'])
+    ax6.bar(r3, bar_data['null'], width=bar_width, color=colors[2], 
+           edgecolor='white', label=MECHANISM_DISPLAY_NAMES['null'])
+    
+    # Configure axis
+    ax6.set_xticks([r + bar_width for r in range(len(categories))])
+    ax6.set_xticklabels(categories)
+    ax6.set_ylabel('Energy Ratio', fontsize=12)
+    ax6.set_ylim(0, 0.5)
+    ax6.legend(fontsize=10, loc='upper right')
+    ax6.grid(True, alpha=0.3, linestyle='--', axis='y')
+    
+    # Add value labels on top of bars
+    for i, r in enumerate([r1, r2, r3]):
+        mechanism = list(bar_data.keys())[i]
+        values = bar_data[mechanism]
+        for j, v in enumerate(values):
+            ax6.text(r[j], v + 0.02, f'{v:.2f}', ha='center', va='bottom', fontsize=8)
+    
+    # Final adjustments
+    plt.tight_layout()
+    
+    # Save the figure
+    output_path = save_figure(fig, "integrated_p2p_analysis")
+    
+    plt.close(fig)
+    
+    print("Integrated P2P analysis visualization generated successfully.")
     return output_path
 

@@ -117,10 +117,19 @@ def plot_battery_management(data_by_mechanism):
         str: Path to the saved figure
     """
     # Create the figure with standard IEEE dimensions (matching other plots)
-    fig, ax1 = plt.subplots(figsize=(5, 4), dpi=600)
+    # Increase figure width from 7 to 9 to lengthen the plot lines
+    fig, ax1 = plt.subplots(figsize=(9, 5), dpi=600)
     
-    # Create a secondary y-axis
+    # Add grid to make the visualization look more like the second image
+    ax1.grid(True, linestyle='--', alpha=0.7, color='lightgray', linewidth=0.8)
+    
+    # Create a secondary y-axis for charging rate
     ax2 = ax1.twinx()
+    
+    # Create a third y-axis for grid price
+    ax3 = ax1.twinx()
+    # Position the third y-axis on the right with offset
+    ax3.spines['right'].set_position(('outward', 60))  # Move 60 points outward from the right
     
     # Generate 24 hours of synthetic data
     hours = np.arange(24)
@@ -144,45 +153,67 @@ def plot_battery_management(data_by_mechanism):
     # Scale to reasonable kW values
     charging_rates = charging_rates * 0.3
     
-    # Plot battery SoC on primary axis
-    ax1.plot(hours, soc_curve, color=IEEE_COLORS['blue'], linewidth=2.0, label='Battery SoC')
-    ax1.set_ylabel("State of Charge (%)", fontsize=12)
+    # Grid price curve - higher in evening peak
+    grid_price = 15 + 15 * np.sin(np.pi * (hours - 17) / 8)  # Peak at 5pm
+    grid_price = np.clip(grid_price, 15, 30)  # Keep within range
+    
+    # Increase line width from 2.0 to 3.0 to make the plot lines more prominent
+    ax1.plot(hours, soc_curve, color=IEEE_COLORS['blue'], linewidth=3.0, label='Battery SoC')
+    # Increase font size from 12 to 16
+    ax1.set_ylabel("State of Charge (%)", fontsize=16)
     ax1.set_ylim(0, 100)
+    # Increase tick font size
+    ax1.tick_params(axis='both', labelsize=16)
     
-    # Plot charging/discharging actions on secondary axis
-    ax2.plot(hours, charging_rates, color=IEEE_COLORS['red'], linewidth=1.5, linestyle='--', label='Charging Rate')
-    ax2.set_ylabel("Charging Rate (kW)", fontsize=12)
+    # Increase line width from 1.5 to 2.5
+    ax2.plot(hours, charging_rates, color=IEEE_COLORS['red'], linewidth=2.5, linestyle='--', label='Charging Rate')
+    # Increase font size from 12 to 16
+    ax2.set_ylabel("Charging Rate (kW)", fontsize=16)
     ax2.set_ylim(-3, 3)
+    # Increase tick font size
+    ax2.tick_params(axis='y', labelsize=16)
     
-    # Add annotations for key periods
-    # Morning charging (low prices)
-    morning_charge_idx = np.argmax(charging_rates[:12])
-    ax1.annotate('Low-price\nCharging', xy=(hours[morning_charge_idx], soc_curve[morning_charge_idx]), 
-                xytext=(hours[morning_charge_idx]-1, soc_curve[morning_charge_idx]-15),
-                arrowprops=dict(arrowstyle='->', color=IEEE_COLORS['green'], linewidth=1.0),
-                fontsize=9)
+    # Increase line width from 1.5 to 2.5
+    ax3.plot(hours, grid_price, color=IEEE_COLORS['purple'], linewidth=2.5, linestyle=':', label='Grid Price')
+    # Increase font size from 12 to 16
+    ax3.set_ylabel("Grid Price (€/MWh)", fontsize=16, color=IEEE_COLORS['purple'])
+    ax3.tick_params(axis='y', colors=IEEE_COLORS['purple'], labelsize=16)
+    ax3.set_ylim(10, 35)
     
-    # Evening discharging (high prices)
-    evening_discharge_idx = 12 + np.argmin(charging_rates[12:])
-    ax1.annotate('Peak-price\nDischarging', xy=(hours[evening_discharge_idx], soc_curve[evening_discharge_idx]), 
-                xytext=(hours[evening_discharge_idx]+1, soc_curve[evening_discharge_idx]-15),
-                arrowprops=dict(arrowstyle='->', color=IEEE_COLORS['red'], linewidth=1.0),
-                fontsize=9)
+    # Add annotations for key periods with better positioning like in the reference image
+    # Morning charging (low prices) - adjust position to match reference
+    morning_charge_idx = 8  # Fixed position at hour 8 to match reference image
+    ax1.annotate('Low-price\nCharging', 
+                xy=(morning_charge_idx, soc_curve[morning_charge_idx]), 
+                xytext=(morning_charge_idx, 55),  # Position text higher up
+                arrowprops=dict(arrowstyle='->', color='green', linewidth=1.5),
+                fontsize=14, fontweight='bold', ha='center')
     
-    # Add grid price curve for reference (scaled to fit in the plot)
-    grid_price = 0.5 + 0.5 * np.sin(np.pi * (hours - 17) / 8)  # Peak at 17:00
-    grid_price = 20 + grid_price * 30  # Scale to fit on SoC plot
-    ax1.plot(hours, grid_price, color=IEEE_COLORS['purple'], linestyle=':', linewidth=1.5, label='Grid Price')
+    # Evening discharging (high prices) - adjust position to match reference
+    evening_discharge_idx = 18  # Fixed position at hour 18 to match reference image
+    ax1.annotate('Peak-price\nDischarging', 
+                xy=(evening_discharge_idx, soc_curve[evening_discharge_idx]), 
+                xytext=(evening_discharge_idx+2, 55),  # Position text to the right
+                arrowprops=dict(arrowstyle='->', color='#D95319', linewidth=1.5),
+                fontsize=14, fontweight='bold', ha='center')
     
-    # Remove the title as requested
-    ax1.set_xlabel("Hour of Day", fontsize=12)
+    # Use bold font for x-axis label to match the reference
+    ax1.set_xlabel("Hour of Day", fontsize=16, fontweight='bold')
     ax1.set_xticks(np.arange(0, 25, 6))  # Updated to include hour 24
-    ax1.grid(True, alpha=0.3, linestyle='--', linewidth=1.0)
+    # Remove this line as we've already added the grid earlier
     
     # Combine legends from both axes
     lines1, labels1 = ax1.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
-    ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper right', fontsize=9)
+    lines3, labels3 = ax3.get_legend_handles_labels()
+    
+    # Create a more prominent legend with better styling
+    legend = ax1.legend(lines1 + lines2 + lines3, labels1 + labels2 + labels3, 
+                      loc='upper left', fontsize=16, 
+                      frameon=True, framealpha=0.9,
+                      edgecolor='lightgray',
+                      bbox_to_anchor=(0.01, 0.99),
+                      ncol=1)
     
     plt.tight_layout()
     
