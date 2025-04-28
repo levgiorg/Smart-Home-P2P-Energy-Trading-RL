@@ -89,9 +89,6 @@ python main.py --mechanism detection --num_houses 10
 ### Generating Visualizations
 
 ```bash
-# Generate IEEE-compliant plots for paper submission
-python generate_ieee_plots.py
-
 # Run energy analysis visualizations
 python energy_analysis/main.py
 ```
@@ -150,37 +147,21 @@ The detection-based (reward-based) mechanism provides the best overall performan
 
 ## Visualizations
 
-### Mechanism Comparison
-![Mechanism Comparison](energy_analysis/ieee_plots/mechanism_comparison_grid.pdf)
-*Comparison of different anti-cartel mechanisms across key metrics including rewards, price ratios, trading profits, and P2P energy volumes*
+### P2P Price Convergence
+![P2P Price Convergence](images/p2p_price_convergence.png)
+*Price convergence in the peer-to-peer energy market showing how different anti-cartel mechanisms influence price dynamics*
 
 ### Temperature Control Performance
-![Temperature Control](energy_analysis/ieee_plots/temperature_control.pdf)
-*Indoor temperature control performance while optimizing energy usage under different mechanisms*
+![Temperature Comfort Zone](images/temperature_comfort_zone.png)
+*Indoor temperature control performance showing how the system maintains temperatures within the comfort zone while optimizing energy usage*
 
 ### Battery Management Strategies
-![Battery Management](energy_analysis/ieee_plots/battery_management.pdf)
-*Optimal battery charging and discharging strategies under different mechanisms*
+![Battery Management](images/battery_management.pdf)
+*Optimal battery charging and discharging strategies under different market conditions*
 
-### Energy Consumption Breakdown
-![Energy Consumption](energy_analysis/ieee_plots/energy_consumption_detection.pdf)
-![Energy Consumption](energy_analysis/ieee_plots/energy_consumption_ceiling.pdf)
-![Energy Consumption](energy_analysis/ieee_plots/energy_consumption_null.pdf)
-*Energy consumption breakdown by source (grid, P2P, renewable) for each mechanism*
-
-### Performance Metrics
-![Performance Matrix](energy_analysis/ieee_plots/comparative_matrix.pdf)
-*Comparative performance matrix showing mechanism performance across multiple metrics*
-
-### Statistical Analysis
-![Box Plots Energy](energy_analysis/ieee_plots/box_plot_energy_efficiency.pdf)
-![Box Plots Price](energy_analysis/ieee_plots/box_plot_price_ratio.pdf)
-![Box Plots Trading](energy_analysis/ieee_plots/box_plot_trading_profit.pdf)
-*Statistical analysis of energy efficiency, price ratios, and trading profits across mechanisms*
-
-### Sensitivity Analysis
-![Parameter Sensitivity](energy_analysis/ieee_plots/parameter_impact_grid_fees.pdf)
-*Sensitivity analysis for key parameters including grid fees, comfort penalties, and market dynamics*
+### Energy Consumption Analysis
+![Merged Energy Consumption](images/merged_energy_consumption.pdf)
+*Comprehensive energy consumption analysis showing distribution across different sources and mechanisms*
 
 ## Methodology
 
@@ -212,12 +193,7 @@ Anti-cartel mechanisms monitor and influence the P2P market to prevent price man
 If you use this code or methodology in your research, please cite:
 
 ```
-@article{levis2025smart,
-  title={Smart Home Energy Management with Anti-Cartel Mechanisms for P2P Markets},
-  author={Levis, George and et al.},
-  journal={IEEE Transactions on Smart Grid},
-  year={2025},
-  publisher={IEEE}
+@article{
 }
 ```
 
