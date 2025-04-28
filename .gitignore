@@ -6,6 +6,8 @@ ml-outputs2/
 ml-outputs3/
 *.pyc
 .venv/
+
+
+
 *.pdf
 *.html
-energy_analysis/ieee_plots
