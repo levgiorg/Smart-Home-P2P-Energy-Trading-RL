@@ -8,7 +8,5 @@ ml-outputs3/
 .venv/
 
 
-
-
 *.html
 *.pdf
