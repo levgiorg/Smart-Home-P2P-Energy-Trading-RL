@@ -156,11 +156,11 @@ The detection-based (reward-based) mechanism provides the best overall performan
 *Indoor temperature control performance showing how the system maintains temperatures within the comfort zone while optimizing energy usage*
 
 ### Battery Management Strategies
-![Battery Management](images/battery_management.pdf)
+![Battery Management](images/battery_management.png)
 *Optimal battery charging and discharging strategies under different market conditions*
 
 ### Energy Consumption Analysis
-![Merged Energy Consumption](images/merged_energy_consumption.pdf)
+![Merged Energy Consumption](images/merged_energy_consumption.png)
 *Comprehensive energy consumption analysis showing distribution across different sources and mechanisms*
 
 ## Methodology
