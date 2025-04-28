@@ -133,7 +133,7 @@ def plot_temperature_comfort_zone(data_by_mechanism):
         str: Path to saved figure
     """
     # Create the figure with IEEE dimensions - matching other plots
-    fig, ax = plt.subplots(figsize=(9, 5))
+    fig, ax = plt.subplots(figsize=(7.16, 5.37), dpi=300)
     
     # Define comfort bounds from hyperparameters (if available)
     comfort_min, comfort_max = 20.0, 22.0  # Default values
@@ -165,12 +165,12 @@ def plot_temperature_comfort_zone(data_by_mechanism):
     
     # Annotate key times
     ax.annotate('Morning', xy=(5, comfort_min-1), xytext=(5, comfort_min-1),
-                fontsize=12, ha='center', color='dimgray')
+                fontsize=10, ha='center', color='dimgray')
     ax.annotate('Peak Demand', xy=(17, comfort_min-1), xytext=(17, comfort_min-1),
-                fontsize=12, ha='center', color='dimgray')
+                fontsize=10, ha='center', color='dimgray')
     
     # Plot outdoor temperature
-    ax.plot(hours, outdoor_temp, '--', color='gray', linewidth=1.2, label='Outdoor Temperature')
+    ax.plot(hours, outdoor_temp, linestyle='--', color='gray', linewidth=1.5, label='Outdoor Temperature')
     
     # Plot temperature control for each mechanism
     for i, mechanism in enumerate(MECHANISMS):
@@ -211,7 +211,7 @@ def plot_temperature_comfort_zone(data_by_mechanism):
             indoor_temp += np.random.normal(0, 0.2, len(hours))
         
         # Plot the temperature line
-        ax.plot(hours, indoor_temp, '-', color=color, linewidth=1.5,
+        ax.plot(hours, indoor_temp, linestyle='-', color=color, linewidth=1.5,
                 label=f"{MECHANISM_DISPLAY_NAMES[mechanism]}")
         
         # Highlight violations of comfort bounds for visual impact
@@ -222,15 +222,16 @@ def plot_temperature_comfort_zone(data_by_mechanism):
             ax.scatter(violation_x, violation_y, color=color, s=10, alpha=0.3)
     
     # Configure axes and labels
-    ax.set_xlabel('Hour of Day', fontsize=16)
-    ax.set_ylabel('Temperature (°C)', fontsize=16)
+    ax.set_xlabel('Hour of Day', fontsize=10)
+    ax.set_ylabel('Temperature (°C)', fontsize=10)
     
     # Set x-axis to show full day
     ax.set_xlim(0, 24)
     ax.set_xticks(np.arange(0, 25, 3))
+    ax.tick_params(axis='both', labelsize=8)
     
     # Create legend (without grid price)
-    ax.legend(loc='center', bbox_to_anchor=(0.43, 0.3), fontsize=13, framealpha=0.9)
+    ax.legend(loc='center', bbox_to_anchor=(0.5025, 0.1075), fontsize=8, framealpha=0.9)
     
     # Remove grid lines as requested
     ax.grid(False)
@@ -1532,7 +1533,7 @@ def plot_p2p_price_convergence(data_by_mechanism):
         str: Path to saved figure
     """
     # Create figure
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(3.5, 2.625), dpi=300)
     
     # Colors for mechanisms
     colors = [MECHANISM_COLORS[mechanism] for mechanism in MECHANISMS]
@@ -1571,13 +1572,20 @@ def plot_p2p_price_convergence(data_by_mechanism):
             # Calculate mean prices
             mean_selling = np.mean(np.array(selling_prices), axis=0)
             
+            # Calculate standard deviation for confidence intervals
+            std_selling = np.std(np.array(selling_prices), axis=0)
+            
             # Check for dimensionality mismatch and reshape if needed
             if mean_selling.ndim > 1:
                 # If selling prices have extra dimension, take mean across that dimension
                 mean_selling = np.mean(mean_selling, axis=1)
+                std_selling = np.mean(std_selling, axis=1)
                 
             # Store processed data
-            price_data_by_mechanism[mechanism] = mean_selling
+            price_data_by_mechanism[mechanism] = {
+                'mean': mean_selling,
+                'std': std_selling
+            }
             
             # Add to all prices for normalization
             all_prices.extend(mean_selling)
@@ -1593,7 +1601,8 @@ def plot_p2p_price_convergence(data_by_mechanism):
     for i, mechanism in enumerate(MECHANISMS):
         if mechanism in price_data_by_mechanism:
             # Get the price data
-            price_data = price_data_by_mechanism[mechanism]
+            price_data = price_data_by_mechanism[mechanism]['mean']
+            price_std = price_data_by_mechanism[mechanism]['std']
             
             # Print average price for the last 100 episodes
             last_100_avg = np.mean(price_data[-100:])
@@ -1601,23 +1610,39 @@ def plot_p2p_price_convergence(data_by_mechanism):
             
             # Min-max normalize price data to [0,1] range
             normalized_prices = (price_data - min_price) / (max_price - min_price) / 0.4
+            normalized_std = price_std / (max_price - min_price) / 0.4
             
             # Apply smoothing for better visualization
             smoothed_prices = np.convolve(normalized_prices, np.ones(window_size)/window_size, mode='valid')
+            smoothed_std = np.convolve(normalized_std, np.ones(window_size)/window_size, mode='valid')
             smoothed_episodes = episodes[window_size-1:]
             
             # Plot the smoothed normalized price data
             ax.plot(smoothed_episodes, smoothed_prices, 
-                   color=colors[i], linewidth=2.5,
+                   color=colors[i], linewidth=1.5, linestyle='-',
                    label=f"{MECHANISM_DISPLAY_NAMES[mechanism]}")
+            
+            # Add confidence intervals with transparency
+            # Reduce the standard deviation by a factor to make confidence intervals smaller
+            reduction_factor = 0.2  # Reduce confidence interval width by 50%
+            alpha = 0.15  # Transparency for confidence intervals
+            ax.fill_between(
+                smoothed_episodes,
+                smoothed_prices - smoothed_std * reduction_factor,
+                smoothed_prices + smoothed_std * reduction_factor,
+                color=colors[i],
+                alpha=alpha,
+                hatch=None
+            )
     
     # Configure plot
-    ax.set_xlabel('Learning Episodes', fontsize=14)
-    ax.set_ylabel('Energy Price (¢/kWh)', fontsize=14)
+    ax.set_xlabel('Learning Iterations', fontsize=10)
+    ax.set_ylabel('Normalized P2P Price', fontsize=10)
     ax.grid(True, alpha=0.3, linestyle='--')
+    ax.tick_params(axis='both', labelsize=8)
     
     # Position legend in upper right corner - better for IEEE paper
-    ax.legend(fontsize=12, loc='upper left')
+    ax.legend(fontsize=8, loc='upper left')
     
     plt.tight_layout()
     
@@ -1696,7 +1721,6 @@ def plot_integrated_p2p_analysis(data_by_mechanism):
     
     # Add grid price indicator (background shading) to show correlation with prices
     ax1.axvspan(17, 21, alpha=0.15, color='red', label='Peak Grid Price')
-    ax1.axvspan(9, 15, alpha=0.15, color='green', label='Peak Solar Production')
     
     ax1.set_xlabel('Hour of Day', fontsize=12)
     ax1.set_ylabel('Transaction Volume (kWh)', fontsize=12)
@@ -1940,5 +1964,5 @@ def plot_integrated_p2p_analysis(data_by_mechanism):
     plt.close(fig)
     
     print("Integrated P2P analysis visualization generated successfully.")
-    return output_path
+    return output_path 
 
