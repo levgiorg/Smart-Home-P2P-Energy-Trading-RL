@@ -152,7 +152,7 @@ class AntiCartelMechanism:
         self._analyze_price_correlations(price_history_array, selling_prices, penalties, num_houses)
         
         # 2. Analyze global price patterns
-        self._analyze_global_price_patterns(price_history_array, selling_prices, penalties)
+        # self._analyze_global_price_patterns(price_history_array, selling_prices, penalties)
         
         return penalties
     
@@ -208,32 +208,6 @@ class AntiCartelMechanism:
                         penalties[i] += correlation_penalty * selling_prices[i]
                         penalties[j] += correlation_penalty * selling_prices[j]
     
-    def _analyze_global_price_patterns(
-        self, 
-        price_history: np.ndarray, 
-        selling_prices: List[float], 
-        penalties: List[float]
-    ) -> None:
-        """
-        Analyze global price patterns across all houses and update penalties.
-        
-        Args:
-            price_history: Array of historical prices
-            selling_prices: Current selling prices
-            penalties: List of penalties to update
-        """
-        if len(self.price_history) >= self.monitoring_window:
-            recent_prices = price_history[-self.monitoring_window:]
-            global_mean = np.mean(recent_prices, axis=1)  # Mean price across houses for each time step
-            global_std = np.std(recent_prices, axis=1)    # Std dev across houses for each time step
-            
-            # Check for suspiciously low variation across houses
-            if np.mean(global_std) < self.min_price_variance * 2:
-                # All houses moving together with very little variation
-                global_penalty = self.penalty_factor * 0.2
-                for i, sp in enumerate(selling_prices):
-                    penalties[i] += global_penalty * sp
-        
     def get_price_ceiling(self, grid_price: float) -> float:
         """
         Calculate the maximum allowed selling price based on current grid price.
