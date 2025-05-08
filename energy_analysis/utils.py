@@ -77,9 +77,23 @@ def save_figure(fig, filename, formats=None, **kwargs):
     # Only save as PDF as requested
     formats = ['pdf']
     
-    # Handle other kwargs
-    savefig_kwargs = {k: v for k, v in kwargs.items() if k != 'format'}
+    # Explicitly pop 'caption' from kwargs if it exists, so it's not passed to savefig
+    caption_text = kwargs.pop('caption', None) # Safely get and remove caption
     
+    # Prepare savefig_kwargs without format or caption
+    savefig_kwargs = {k: v for k, v in kwargs.items() if k != 'format'}
+
+    if caption_text:
+        print(f"Note: Caption for {filename} was provided but is not directly embeddable in PDF. Caption: {caption_text}")
+        # Optionally, save the caption to a .txt file named after the plot
+        caption_filename = os.path.join(PLOTS_OUTPUT_DIR, f"{filename}_caption.txt")
+        try:
+            with open(caption_filename, 'w') as f_cap:
+                f_cap.write(caption_text)
+            print(f"Caption for {filename} saved to: {caption_filename}")
+        except Exception as e:
+            print(f"Warning: Could not save caption to file for {filename}. Error: {e}")
+
     for fmt in formats:
         output_path = os.path.join(PLOTS_OUTPUT_DIR, f"{filename}.{fmt}")
         fig.savefig(output_path, format=fmt, dpi=600, bbox_inches='tight', **savefig_kwargs)
