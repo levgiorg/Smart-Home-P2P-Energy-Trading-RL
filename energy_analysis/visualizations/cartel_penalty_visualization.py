@@ -158,28 +158,57 @@ def plot_penalty_components_stacked_area(data_by_mechanism: Dict[str, Dict[str, 
 
     fig, ax = plt.subplots(figsize=(7.16, 5.37))
     
+    # Normalize the data from 0 to 1
+    normalized_components = {}
+    for key in required_smoothed_keys:
+        component_data = components_smoothed[key]
+        if np.max(component_data) > 0:  # Avoid division by zero
+            normalized_components[key] = component_data / np.max(np.sum([components_smoothed[k] for k in required_smoothed_keys], axis=0))
+        else:
+            normalized_components[key] = component_data
+    
     y_stack = np.row_stack([
-        components_smoothed['price_matching'],
-        components_smoothed['low_variance'],
-        components_smoothed['correlation']
+        normalized_components['price_matching'],
+        normalized_components['low_variance'],
+        normalized_components['correlation']
     ])
     
     labels = [PENALTY_COMPONENTS[k]['name'] for k in ['price_matching', 'low_variance', 'correlation']]
     colors = [PENALTY_COMPONENTS[k]['color'] for k in ['price_matching', 'low_variance', 'correlation']]
     
-    ax.stackplot(x_smoothed, y_stack, labels=labels, colors=colors, alpha=0.8)
+    # Use stackplot with edgecolor='black' to add black outlines
+    ax.stackplot(x_smoothed, y_stack, labels=labels, colors=colors, alpha=0.8, edgecolor='black', linewidth=0.5)
     
-    # Annotations section removed as per IEEE publication requirements
-    # This eliminates the "Correlation threshold", "Low Variance threshold", and 
-    # "Price Matching threshold" arrows for a cleaner visualization
+    # Adjust x-axis limits to remove empty space
+    # Calculate actual data range to determine appropriate limits
+    data_start_idx = 0
+    data_end_idx = len(x_smoothed) - 1
+    
+    # Find first non-zero data point
+    for i in range(len(x_smoothed)):
+        if np.sum(y_stack[:, i]) > 0.01:  # Threshold to consider data significant
+            data_start_idx = max(0, i - 10)  # Add small padding
+            break
+    
+    # Find last non-zero data point
+    for i in range(len(x_smoothed) - 1, -1, -1):
+        if np.sum(y_stack[:, i]) > 0.01:
+            data_end_idx = min(len(x_smoothed) - 1, i + 10)  # Add small padding
+            break
+    
+    # Set the x-axis limits based on actual data content
+    ax.set_xlim(data_start_idx, data_end_idx)
 
     ax.set_title(f"Cartel penalty component contributions\n({MECHANISM_DISPLAY_NAMES[mechanism].lower()})", fontsize=14)
     ax.set_xlabel("Training episodes", fontsize=12)
-    ax.set_ylabel("Penalty value", fontsize=12)
+    ax.set_ylabel("Normalized penalty value", fontsize=12)  # Updated label to reflect normalization
     
     def format_axis(x_val, pos):
         return f'{x_val:.1f}'
     ax.yaxis.set_major_formatter(mticker.FuncFormatter(format_axis))
+    
+    # Set y-axis from 0 to 1 since we normalized the data
+    ax.set_ylim(0, 1.0)
         
     ax.legend(loc='upper left', bbox_to_anchor=(0.01, 0.99), ncol=1, frameon=True)
     plt.tight_layout(rect=[0, 0, 0.98, 0.93])
