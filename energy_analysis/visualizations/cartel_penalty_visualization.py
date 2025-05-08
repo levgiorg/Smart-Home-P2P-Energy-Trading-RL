@@ -228,69 +228,139 @@ def plot_penalty_components_waterfall(data_by_mechanism: Dict[str, Dict[str, Any
     """
     mechanism = 'detection'
     
-    if mechanism not in data_by_mechanism or not data_by_mechanism[mechanism]['anti_cartel_penalties']:
-        print(f"No actual anti-cartel penalties data available - generating synthetic data for demonstration")
-        num_episodes = 1000
-        synthetic_penalties = np.linspace(0, 0.5, num_episodes)
-        synthetic_penalties += np.random.normal(0, 0.05, num_episodes)
+    # Consistent data handling with stacked area plot
+    if mechanism not in data_by_mechanism or \
+       not data_by_mechanism[mechanism].get('anti_cartel_penalties') or \
+       not data_by_mechanism[mechanism]['anti_cartel_penalties']:
+        print(f"No actual anti-cartel penalties data for '{mechanism}' - generating synthetic data for demonstration.")
+        num_episodes_synthetic = 1000  # Synthetic data with 1000 episodes
+        synthetic_penalties = np.linspace(0, 0.5, num_episodes_synthetic)
+        synthetic_penalties += np.random.normal(0, 0.05, num_episodes_synthetic)
         synthetic_penalties = np.maximum(synthetic_penalties, 0)
         
         if mechanism not in data_by_mechanism:
             data_by_mechanism[mechanism] = {}
+        if 'anti_cartel_penalties' not in data_by_mechanism[mechanism]:
+            data_by_mechanism[mechanism]['anti_cartel_penalties'] = []
+        # Ensure it's a list of arrays, even if synthetic
         data_by_mechanism[mechanism]['anti_cartel_penalties'] = [synthetic_penalties]
     
-    components = _extract_penalty_components(data_by_mechanism[mechanism]['anti_cartel_penalties'])
-    if not components:
+    components_raw = _extract_penalty_components(data_by_mechanism[mechanism]['anti_cartel_penalties'])
+    if not components_raw:
         print("Failed to extract penalty components")
         return None
     
     component_keys = ['price_matching', 'low_variance', 'correlation']
-    component_values_avg = {k: np.mean(components[k]) for k in component_keys}
+    
+    # Calculate average values for each component
+    component_values_avg = {k: np.mean(components_raw[k]) for k in component_keys}
     total_penalty_avg = sum(component_values_avg.values())
+    
+    # Normalize values from 0 to 1
+    if total_penalty_avg > 0:
+        normalized_component_values = {k: component_values_avg[k] / total_penalty_avg for k in component_keys}
+        normalized_total = 1.0
+    else:
+        normalized_component_values = component_values_avg
+        normalized_total = 0.0
 
     fig, ax = plt.subplots(figsize=(7.16, 5.37))
     
-    # Updated names list (removing 'Start')
+    # Names for the x-axis (component names and total)
     names = [PENALTY_COMPONENTS[k]['name'] for k in component_keys] + ['Total Penalty']
-    bar_width = 0.5
-
-    waterfall_display_values = [component_values_avg[k] for k in component_keys]
+    bar_width = 0.6
+    bar_positions = np.arange(len(names))
     
-    bottoms = np.zeros(len(waterfall_display_values))
-    current_bottom = 0
-    for i, val in enumerate(waterfall_display_values):
-        bottoms[i] = current_bottom
-        current_bottom += val
-        
+    # Create a list of values that includes all components and the net difference to total
+    # For a proper waterfall chart, we need:
+    # - Component values (unchanged)
+    # - The balance (either positive or negative) to reach the normalized total
+    waterfall_values = [normalized_component_values[k] for k in component_keys]
+    
+    # Define colors for positive and negative contributions
+    positive_color = 'forestgreen'
+    negative_color = 'firebrick'
+    total_color = 'navy'
+    
+    # Initialize cumulative sum for calculating each bar's bottom
+    cumulative_sums = [0]  # Starting point is 0
+    for i in range(len(waterfall_values)):
+        # Add the previous value to get the new cumulative sum
+        cumulative_sums.append(cumulative_sums[-1] + waterfall_values[i])
+    
+    # Component colors for legend
     component_colors = [PENALTY_COMPONENTS[k]['color'] for k in component_keys]
-
-    # Plot Component bars (starting from x=0)
-    for i in range(len(waterfall_display_values)):
-        bar_x_position = i # Bars will be at 0, 1, 2
-        ax.bar(bar_x_position, waterfall_display_values[i], bottom=bottoms[i], 
-               color=component_colors[i], edgecolor='black', width=bar_width)
-        ax.text(bar_x_position, bottoms[i] + waterfall_display_values[i]/2, f"{waterfall_display_values[i]:.2f}",
-                ha='center', va='center', fontsize=9, color='white' if sum(plt.cm.colors.to_rgb(component_colors[i])) < 1.5 else 'black', weight='bold')
-
-    # Plot Total Penalty bar
-    total_bar_idx = len(waterfall_display_values) # Total bar will be at x=3 (if 3 components)
-    ax.bar(total_bar_idx, total_penalty_avg, bottom=0, color='darkgreen', edgecolor='black', width=bar_width)
-    ax.text(total_bar_idx, total_penalty_avg/2, f"{total_penalty_avg:.2f}",
-            ha='center', va='center', fontsize=9, color='white', weight='bold')
-
-    ax.set_title(f"Average cartel penalty component breakdown\n({MECHANISM_DISPLAY_NAMES[mechanism].lower()})", fontsize=14)
-    ax.set_ylabel("Average penalty value", fontsize=12)
     
-    # Adjust x-ticks to match new bar positions
-    ax.set_xticks(range(len(names)))
-    ax.set_xticklabels(names, rotation=0, ha='center') # rotation=0 for horizontal, ha='center'
+    # Increased linewidth for all black elements
+    edge_linewidth = 1.2
+    connector_linewidth = 1.5
     
-    ax.grid(False)
+    # Draw the connector lines first so they appear behind the bars
+    for i in range(1, len(cumulative_sums)):
+        # Draw connector between previous cumulative sum and current cumulative sum
+        if i < len(cumulative_sums) - 1:  # Don't draw after the last component
+            ax.plot([bar_positions[i-1], bar_positions[i]], 
+                   [cumulative_sums[i], cumulative_sums[i]], 
+                   'k-', alpha=0.5, linestyle='--', linewidth=connector_linewidth)
     
-    # info_text box (as before)
-    info_text = '\n'.join([f"{comp['name']}" for k, comp in PENALTY_COMPONENTS.items() if k in component_keys])
-    props = dict(boxstyle='round', facecolor='white', alpha=0.7)
-    ax.text(0.02, 0.98, info_text, transform=ax.transAxes, fontsize=9, verticalalignment='top', bbox=props)
+    # Draw the component bars with different colors based on whether they add or subtract
+    for i in range(len(waterfall_values)):
+        value = waterfall_values[i]
+        bottom = cumulative_sums[i]
+        
+        # Component bars use their specific colors
+        ax.bar(bar_positions[i], value, bottom=bottom,
+               color=component_colors[i], edgecolor='black', 
+               width=bar_width, alpha=0.8, linewidth=edge_linewidth)
+        
+        # Annotate the cumulative value after this component
+        ax.annotate(f'{cumulative_sums[i+1]:.2f}', 
+                   xy=(bar_positions[i], cumulative_sums[i+1]),
+                   xytext=(0, 5), textcoords='offset points',
+                   ha='center', va='bottom', fontsize=9, fontweight='bold')
     
-    plt.tight_layout(rect=[0, 0.05, 1, 0.93])
+    # Draw the total bar
+    total_bar_idx = len(waterfall_values)
+    ax.bar(bar_positions[total_bar_idx], normalized_total, 
+          bottom=0, color=total_color, edgecolor='black', 
+          width=bar_width, alpha=0.8, linewidth=edge_linewidth)
+    
+    # Annotate the total value
+    ax.annotate(f'{normalized_total:.2f}', 
+               xy=(bar_positions[total_bar_idx], normalized_total),
+               xytext=(0, 5), textcoords='offset points',
+               ha='center', va='bottom', fontsize=9, fontweight='bold')
+    
+    # Add legend manually - moved to top left
+    legend_elements = [
+        Patch(facecolor=component_colors[0], edgecolor='black', label=names[0], linewidth=edge_linewidth),
+        Patch(facecolor=component_colors[1], edgecolor='black', label=names[1], linewidth=edge_linewidth),
+        Patch(facecolor=component_colors[2], edgecolor='black', label=names[2], linewidth=edge_linewidth),
+        Patch(facecolor=total_color, edgecolor='black', label=names[3], linewidth=edge_linewidth)
+    ]
+    ax.legend(handles=legend_elements, loc='upper left', frameon=True)
+    
+    # Set labels
+    ax.set_ylabel("Normalized contribution", fontsize=12)
+    
+    # Adjust y-axis to match stacked area plot but add some headroom for annotations
+    ax.set_ylim(0, 1.1)
+    
+    # Add gridlines with increased width
+    ax.grid(True, axis='y', linestyle='--', alpha=0.4, linewidth=0.8)
+    
+    # Format y-axis
+    def format_axis(y_val, pos):
+        return f'{y_val:.1f}'
+    ax.yaxis.set_major_formatter(mticker.FuncFormatter(format_axis))
+    
+    # Set x-ticks and labels
+    ax.set_xticks(bar_positions)
+    ax.set_xticklabels(names, rotation=15, ha='center')
+    
+    # Add thicker border around the plot
+    for spine in ax.spines.values():
+        spine.set_linewidth(edge_linewidth)
+    
+    plt.tight_layout()
     return save_figure(fig, f"penalty_components_waterfall", formats=['pdf'])
