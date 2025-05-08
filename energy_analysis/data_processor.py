@@ -387,22 +387,33 @@ def _load_battery_data(run_dir, run_id, mechanism_type, data_by_mechanism):
 
 
 def _load_anticartel_penalties(run_dir, run_id, mechanism_type, data_by_mechanism):
-    """Load anti-cartel penalties data for a specific run."""
+    """Load anti-cartel penalties for a specific run."""
     try:
-        penalties_file = os.path.join(run_dir, "data", "ddpg__anti_cartel_penalties.pkl")
-        
+        # Path to the presumed anti-cartel penalty file
+        penalties_file = os.path.join(run_dir, "data", "ddpg__anti_cartel_penalty.pkl") 
+        # This filename needs to be correct for actual data loading.
+        # If it's consistently not found, the plot will use synthetic data.
+
         if os.path.exists(penalties_file):
             with open(penalties_file, "rb") as f:
-                penalties = pickle.load(f)
+                penalty_data = pickle.load(f)
                 
-            # Convert to numpy if not already
-            penalties = np.array(penalties)
-            
-            # Handle dimensionality
-            if penalties.ndim > 1:
-                # Mean across houses/agents
-                penalties = np.mean(penalties, axis=1)
+                # Original simple processing: convert to numpy array and ensure 1D
+                penalty_data = np.array(penalty_data) # Ensure it's an array
+                if penalty_data.ndim > 1:
+                    # If multi-dimensional (e.g., per agent), average over the agents (axis 1)
+                    # This assumes episodes are axis 0. Adjust if your data is structured differently.
+                    penalty_data = np.mean(penalty_data, axis=1)
                 
-            data_by_mechanism[mechanism_type]['anti_cartel_penalties'].append(penalties)
+                # Final check to ensure it's a 1D array before appending
+                if penalty_data.ndim == 1:
+                    data_by_mechanism[mechanism_type]['anti_cartel_penalties'].append(penalty_data)
+                else:
+                    # This case should be rare if the above processing is correct
+                    print(f"    WARNING: Processed anti-cartel penalty data for run {run_id} is not 1D (shape: {penalty_data.shape}). Skipping.")
+        # else: # If file not found, do nothing, synthetic data will be used by plot func
+            # print(f"    INFO: Anti-cartel penalty file not found at {penalties_file}. Plot will use synthetic data if no runs provide it.")
+
     except Exception as e:
-        print(f"Could not load anti-cartel penalties for {run_dir}: {e}")
+        # Catch any other error during loading/processing of this specific file
+        print(f"    ERROR: Could not load or process anti-cartel penalties for {run_dir} from {penalties_file}: {e}")

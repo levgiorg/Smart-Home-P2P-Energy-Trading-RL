@@ -11,6 +11,7 @@ Modules:
     statistical: Statistical and comparative visualizations
     sensitivity: Parameter sensitivity analysis visualizations
     advanced_plots: Advanced story-telling visualizations for publication
+    cartel_penalty_visualization: Cartel penalty component visualizations
 """
 
 from energy_analysis.visualizations.core_metrics import plot_mechanism_comparison
@@ -42,6 +43,10 @@ from energy_analysis.visualizations.advanced_plots import (
     plot_p2p_price_convergence,
     plot_integrated_p2p_analysis
 )
+from energy_analysis.visualizations.cartel_penalty_visualization import (
+    plot_penalty_components_stacked_area,
+    plot_penalty_components_waterfall
+)
 
 __all__ = [
     'plot_mechanism_comparison',
@@ -63,5 +68,7 @@ __all__ = [
     'plot_p2p_network_comparison',
     'plot_p2p_transaction_patterns',
     'plot_p2p_price_convergence',
-    'plot_integrated_p2p_analysis'
+    'plot_integrated_p2p_analysis',
+    'plot_penalty_components_stacked_area',
+    'plot_penalty_components_waterfall'
 ]
