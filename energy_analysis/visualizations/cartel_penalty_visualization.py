@@ -125,7 +125,6 @@ def plot_penalty_components_stacked_area(data_by_mechanism: Dict[str, Dict[str, 
         print("Error: Penalty components could not be extracted even after data handling. Cannot generate plot.")
         return None 
 
-    # Determine original_len from the (potentially synthetic) components_raw
     original_len = 0
     for key in ['price_matching', 'low_variance', 'correlation']:
         if key in components_raw and isinstance(components_raw[key], np.ndarray) and components_raw[key].size > 0:
@@ -135,7 +134,10 @@ def plot_penalty_components_stacked_area(data_by_mechanism: Dict[str, Dict[str, 
         print("Error: Could not determine original_len from penalty components. Cannot generate plot.")
         return None
 
-    window_size = 30
+    # Increased window size from 30 to 150 for IEEE publication standards
+    # Larger window size provides smoother trends for complex multivariate data
+    # while still preserving important transitions in the data
+    window_size = 150
     components_smoothed = {}
     for key in ['price_matching', 'low_variance', 'correlation']:
         if key in components_raw and isinstance(components_raw[key], np.ndarray):
@@ -167,30 +169,9 @@ def plot_penalty_components_stacked_area(data_by_mechanism: Dict[str, Dict[str, 
     
     ax.stackplot(x_smoothed, y_stack, labels=labels, colors=colors, alpha=0.8)
     
-    # Annotations (simplified mapping, check original_len for division)
-    if 'threshold_crossings' in components_raw and original_len > 0 and len(x_smoothed) > 0:
-        for component_key, indices in components_raw['threshold_crossings'].items():
-            if component_key in components_smoothed and component_key in PENALTY_COMPONENTS:
-                for original_idx in indices:
-                    current_raw_component_len = 0
-                    if component_key in components_raw and isinstance(components_raw[component_key], np.ndarray):
-                         current_raw_component_len = len(components_raw[component_key])
-                    
-                    if current_raw_component_len > 0:
-                        smoothed_idx = int((original_idx / current_raw_component_len) * len(x_smoothed))
-                        smoothed_idx = min(smoothed_idx, len(x_smoothed) - 1)
-
-                        if 0 <= smoothed_idx < len(x_smoothed):
-                            if component_key in required_smoothed_keys:
-                                component_plot_idx = required_smoothed_keys.index(component_key)
-                                y_pos = sum(y_stack[i][smoothed_idx] for i in range(component_plot_idx + 1))
-                                ax.annotate(
-                                    f"{component_key.replace('_', ' ').title()} threshold",
-                                    xy=(smoothed_idx, y_pos),
-                                    xytext=(smoothed_idx, y_pos + 0.05 * ax.get_ylim()[1]),
-                                    arrowprops=dict(arrowstyle='->', linewidth=1.0, color=PENALTY_COMPONENTS[component_key]['color']),
-                                    ha='center', fontsize=8, color=PENALTY_COMPONENTS[component_key]['color'], weight='bold'
-                                )
+    # Annotations section removed as per IEEE publication requirements
+    # This eliminates the "Correlation threshold", "Low Variance threshold", and 
+    # "Price Matching threshold" arrows for a cleaner visualization
 
     ax.set_title(f"Cartel penalty component contributions\n({MECHANISM_DISPLAY_NAMES[mechanism].lower()})", fontsize=14)
     ax.set_xlabel("Training episodes", fontsize=12)
@@ -283,4 +264,4 @@ def plot_penalty_components_waterfall(data_by_mechanism: Dict[str, Dict[str, Any
     ax.text(0.02, 0.98, info_text, transform=ax.transAxes, fontsize=9, verticalalignment='top', bbox=props)
     
     plt.tight_layout(rect=[0, 0.05, 1, 0.93])
-    return save_figure(fig, f"penalty_components_waterfall", formats=['pdf']) 
+    return save_figure(fig, f"penalty_components_waterfall", formats=['pdf'])
