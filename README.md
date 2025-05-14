@@ -15,8 +15,9 @@ As residential energy systems become increasingly sophisticated, smart homes wit
 - **Smart Home Energy Management**: Optimizes HVAC operation, battery charging/discharging, and price-setting strategies
 - **Reinforcement Learning Optimization**: DDPG algorithm with advanced neural network architecture
 - **Anti-Cartel Mechanisms**:
-  - **Detection-based (Reward-Based)**: Monitors price patterns and applies penalties when cartel-like behavior is detected
-  - **Ceiling-based (Threshold-Based)**: Enforces a maximum price threshold below the grid price
+  - **Detection-based (referred to as "Reward-Based" in the paper)**: Monitors price patterns and applies penalties when cartel-like behavior is detected
+  - **Ceiling-based (referred to as "Threshold-Based" in the paper)**: Enforces a maximum price threshold below the grid price
+  - **Baseline (referred to as "No Control Method" in the paper)**: No anti-cartel mechanism applied
 - **Comprehensive Environment Simulation**: Realistic modeling of HVAC systems, battery storage, energy generation, and peer-to-peer trading
 - **Extensive Evaluation Framework**: Analysis across multiple metrics including energy efficiency, price competitiveness, and trading profits
 
@@ -98,9 +99,9 @@ python energy_analysis/main.py
 The framework supports extensive configuration for different experimental scenarios:
 
 1. **Anti-Cartel Mechanisms**:
-   - Detection mechanism with configurable monitoring window and penalties
-   - Ceiling mechanism with adjustable markup limits
-   - Baseline with no mechanism (null)
+   - Detection mechanism ("Reward-Based") with configurable monitoring window and penalties
+   - Ceiling mechanism ("Threshold-Based") with adjustable markup limits
+   - Baseline with no mechanism ("No Control Method")
 
 2. **Reward Parameters**:
    - Balance between profit optimization and energy efficiency (beta)

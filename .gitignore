@@ -6,7 +6,11 @@ ml-outputs2/
 ml-outputs3/
 *.pyc
 .venv/
-
-
+models/
+.dockerignore
+Dockerfile
+energy_analysis/
+__pycache__/
+.github/
 *.html
 *.pdf
