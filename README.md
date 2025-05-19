@@ -12,7 +12,7 @@ As residential energy systems become increasingly sophisticated, smart homes wit
 
 
 ### System Model
-![System Model](images/Figure2.png)
+![System Model](images/Figure.png)
 *Configuration of multiple smart homes and the P2P energy exchange framework. The DRL agent of each smart home performs local actions regarding the HVAC and ESS operation, while also setting the price of excess energy in the P2P market.*
 
 ## Key Features
