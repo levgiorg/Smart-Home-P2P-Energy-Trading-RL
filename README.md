@@ -10,6 +10,11 @@ This repository implements a comprehensive framework for smart home energy manag
 
 As residential energy systems become increasingly sophisticated, smart homes with battery storage and renewable generation can participate in peer-to-peer energy markets. However, these systems, when optimized individually for maximum profit, can develop cartel-like behaviors that manipulate market prices, leading to unfair outcomes and reduced social welfare. This research addresses the challenge of detecting and preventing such behaviors while maintaining energy efficiency.
 
+
+### System Model
+![System Model](images/Figure2.png)
+*Configuration of multiple smart homes and the P2P energy exchange framework. The DRL agent of each smart home performs local actions regarding the HVAC and ESS operation, while also setting the price of excess energy in the P2P market.*
+
 ## Key Features
 
 - **Smart Home Energy Management**: Optimizes HVAC operation, battery charging/discharging, and price-setting strategies
