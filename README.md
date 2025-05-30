@@ -199,7 +199,14 @@ Anti-cartel mechanisms monitor and influence the P2P market to prevent price man
 If you use this code or methodology in your research, please cite:
 
 ```
-@article{
+@article{Levis2025,
+  title = {A Peer-to-Peer Energy Management and Exchange Framework in Energy Communities via Actor-Critic Learning},
+  url = {http://dx.doi.org/10.36227/techrxiv.174802380.00970908/v1},
+  DOI = {10.36227/techrxiv.174802380.00970908/v1},
+  publisher = {Institute of Electrical and Electronics Engineers (IEEE)},
+  author = {Levis,  George A. and Spantideas,  Sotirios T and Giannopoulos,  Anastasios E and Trakadas,  Panagiotis},
+  year = {2025},
+  month = may 
 }
 ```
 
