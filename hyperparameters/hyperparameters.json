@@ -30,6 +30,26 @@
         "fc2_dims": 300,
         "fc3_dims": 300
     },
+    "dqn_agent": {
+        "learning_rate": 0.0001,
+        "fc1_dims": 256,
+        "fc2_dims": 256,
+        "fc3_dims": 128,
+        "epsilon_start": 1.0,
+        "epsilon_end": 0.01,
+        "epsilon_decay": 0.995,
+        "target_update_freq": 100,
+        "use_double_dqn": true,
+        "use_dueling": true,
+        "use_prioritized_replay": false,
+        "priority_alpha": 0.6,
+        "priority_beta": 0.4,
+        "gradient_clip": 10.0,
+        "discrete_actions_total": 2100,
+        "hvac_discrete_levels": 10,
+        "battery_discrete_levels": 21,
+        "price_discrete_levels": 10
+    },
     "environment": {
         "num_houses": 10,
         "battery_charging_max_rate": 3,
