@@ -34,16 +34,16 @@ class DQNEnvironmentWrapper:
         self.action_dim_per_house = 3  # Always 3: hvac, battery, price
         self.state_dim_per_house = self.env.STATE_DIM_PER_HOUSE
         
-        # Total dimensions
+        # Total dimensions - FIXED: Use independent per-house actions instead of exponential scaling
         self.total_state_dim = self.num_houses * self.state_dim_per_house
-        self.total_discrete_actions = self.action_discretizer.total_actions ** self.num_houses
+        self.actions_per_house = self.action_discretizer.total_actions  # 2,100 actions per house
         
         print(f"DQN Environment Wrapper initialized:")
         print(f"  - Houses: {self.num_houses}")
         print(f"  - State dim per house: {self.state_dim_per_house}")
         print(f"  - Total state dim: {self.total_state_dim}")
-        print(f"  - Discrete actions per house: {self.action_discretizer.total_actions}")
-        print(f"  - Total discrete action combinations: {self.total_discrete_actions}")
+        print(f"  - Discrete actions per house: {self.actions_per_house}")
+        print(f"  - Architecture: Independent action selection per house")
         
         # Track action usage for analysis
         self.action_usage_stats = {}
@@ -84,14 +84,10 @@ class DQNEnvironmentWrapper:
         Returns:
             Tuple of (next_state, reward, done, info)
         """
-        # Handle different input formats
+        # Handle different input formats - FIXED: Always expect list/array of per-house actions
         if isinstance(discrete_actions, int):
-            # Single house case
-            if self.num_houses == 1:
-                discrete_action_list = [discrete_actions]
-            else:
-                # Convert single joint action to per-house actions
-                discrete_action_list = self._decode_joint_action(discrete_actions)
+            # Single action for all houses (broadcasting)
+            discrete_action_list = [discrete_actions] * self.num_houses
         elif isinstance(discrete_actions, (list, np.ndarray)):
             discrete_action_list = list(discrete_actions)
         else:
@@ -151,44 +147,6 @@ class DQNEnvironmentWrapper:
         
         return state.flatten()
     
-    def _decode_joint_action(self, joint_action: int) -> List[int]:
-        """
-        Decode joint action index to per-house actions.
-        
-        Args:
-            joint_action: Single action index representing all houses
-            
-        Returns:
-            List of discrete actions for each house
-        """
-        actions_per_house = self.action_discretizer.total_actions
-        house_actions = []
-        
-        remaining = joint_action
-        for _ in range(self.num_houses):
-            house_action = remaining % actions_per_house
-            house_actions.append(house_action)
-            remaining //= actions_per_house
-        
-        return house_actions
-    
-    def _encode_joint_action(self, house_actions: List[int]) -> int:
-        """
-        Encode per-house actions to joint action index.
-        
-        Args:
-            house_actions: List of discrete actions for each house
-            
-        Returns:
-            Single joint action index
-        """
-        actions_per_house = self.action_discretizer.total_actions
-        joint_action = 0
-        
-        for i, action in enumerate(house_actions):
-            joint_action += action * (actions_per_house ** i)
-        
-        return joint_action
     
     def _update_action_stats(self, discrete_actions: List[int], continuous_actions: List[List[float]]) -> None:
         """Update action usage statistics."""
@@ -213,7 +171,7 @@ class DQNEnvironmentWrapper:
         return {
             'num_houses': self.num_houses,
             'actions_per_house': discretizer_info['total_actions'],
-            'total_joint_actions': self.total_discrete_actions,
+            'total_joint_actions': f"Independent: {self.actions_per_house} per house",
             'action_structure': discretizer_info,
             'state_dim': self.total_state_dim,
             'action_bounds': {
@@ -270,10 +228,9 @@ class DQNEnvironmentWrapper:
         """Sample a random discrete action for single house."""
         return self.action_discretizer.sample_random_action()
     
-    def sample_random_joint_action(self) -> int:
-        """Sample a random joint action for all houses."""
-        house_actions = [self.sample_random_discrete_action() for _ in range(self.num_houses)]
-        return self._encode_joint_action(house_actions)
+    def sample_random_house_actions(self) -> List[int]:
+        """Sample random discrete actions for all houses."""
+        return [self.sample_random_discrete_action() for _ in range(self.num_houses)]
     
     def describe_action(self, discrete_action: int, house_idx: int = 0) -> Dict[str, Any]:
         """

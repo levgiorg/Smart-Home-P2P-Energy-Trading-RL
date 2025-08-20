@@ -218,13 +218,13 @@ class DQNAgent:
             batch = random.sample(self.memory, self.batch_size)
             states, actions, rewards, next_states, dones = zip(*batch)
             
-            # Convert to tensors
-            states = torch.FloatTensor(states).to(self.device)
-            actions = torch.LongTensor(actions).to(self.device)
-            rewards = torch.FloatTensor(rewards).to(self.device)
-            next_states = torch.FloatTensor(next_states).to(self.device)
-            dones = torch.BoolTensor(dones).to(self.device)
-            weights = torch.ones(self.batch_size).to(self.device)  # Uniform weights
+            # Convert to tensors - FIXED: Optimize tensor creation for performance
+            states = torch.tensor(np.array(states), dtype=torch.float32, device=self.device)
+            actions = torch.tensor(np.array(actions), dtype=torch.long, device=self.device)
+            rewards = torch.tensor(np.array(rewards), dtype=torch.float32, device=self.device)
+            next_states = torch.tensor(np.array(next_states), dtype=torch.float32, device=self.device)
+            dones = torch.tensor(np.array(dones), dtype=torch.bool, device=self.device)
+            weights = torch.ones(self.batch_size, dtype=torch.float32, device=self.device)
         
         # Current Q-values
         if self.use_double_dqn:
@@ -246,11 +246,11 @@ class DQNAgent:
             
             target_q_values = rewards + (self.gamma * next_q_values * (~dones))
         
-        # Compute loss
+        # Compute loss - FIXED: Use consistent Huber loss for both prioritized and standard replay
         td_errors = current_q_values - target_q_values
         if self.use_prioritized_replay:
-            # Weighted MSE loss for prioritized replay
-            loss = (weights * F.mse_loss(current_q_values, target_q_values, reduction='none')).mean()
+            # Weighted Huber loss for prioritized replay
+            loss = (weights * F.smooth_l1_loss(current_q_values, target_q_values, reduction='none')).mean()
             # Update priorities
             self.memory.update_priorities(indices, td_errors.detach().cpu().numpy())
         else:

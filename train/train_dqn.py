@@ -15,7 +15,7 @@ from hyperparameters import Config
 from agents.dqn_agent import DQNAgent
 from environment.dqn_environment_wrapper import DQNEnvironmentWrapper
 from utilities import Utilities
-from bookkeeper import Bookkeeper
+from bookkeeper import BookKeeper
 
 
 class DQNTrainer:
@@ -38,7 +38,7 @@ class DQNTrainer:
         self.run_name = run_name or f"dqn_run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
         # Set random seed for reproducibility
-        self.random_seed = config.get('simulation', 'random_seed', default=42)
+        self.random_seed = config.get('simulation', 'random_seed')
         self._set_random_seed()
         
         # Initialize environment
@@ -61,13 +61,12 @@ class DQNTrainer:
         )
         
         # Training parameters
-        self.num_episodes = config.get('rl_agent', 'num_episodes', default=1000)
+        self.num_episodes = config.get('rl_agent', 'num_episodes')
         self.eval_interval = max(1, self.num_episodes // 10)  # Evaluate 10 times during training
         self.save_interval = max(1, self.num_episodes // 20)  # Save 20 checkpoints
         
-        # Initialize utilities and bookkeeping
+        # Initialize utilities
         self.utilities = Utilities(num_houses=self.env.num_houses)
-        self.bookkeeper = Bookkeeper(run_name=self.run_name, agent_type='DQN')
         
         # Training metrics
         self.training_metrics = {
@@ -81,11 +80,11 @@ class DQNTrainer:
             'training_times': []
         }
         
-        # Create output directories
-        self.output_dir = f"ml-outputs/dqn_runs/{self.run_name}"
-        os.makedirs(self.output_dir, exist_ok=True)
-        os.makedirs(f"{self.output_dir}/models", exist_ok=True)
-        os.makedirs(f"{self.output_dir}/plots", exist_ok=True)
+        # Setup auto-incrementing run directory like DDPG bookkeeper
+        self._setup_dqn_run_directory()
+        
+        # Initialize bookkeeping after output directory is created
+        self.bookkeeper = BookKeeper(config=config, model_name='dqn_', run_dir=self.output_dir)
         
         print(f"DQN Trainer initialized:")
         print(f"  - Run name: {self.run_name}")
@@ -102,6 +101,33 @@ class DQNTrainer:
             torch.manual_seed(self.random_seed)
             if torch.cuda.is_available():
                 torch.cuda.manual_seed(self.random_seed)
+    
+    def _setup_dqn_run_directory(self) -> None:
+        """
+        Set up auto-incrementing run directory for DQN experiments.
+        Creates dqn_runs/run_X where X is the next available number.
+        """
+        runs_dir = 'dqn_runs'
+        os.makedirs(runs_dir, exist_ok=True)
+        
+        # Find existing runs and get next number
+        existing_runs = [d for d in os.listdir(runs_dir) 
+                        if os.path.isdir(os.path.join(runs_dir, d)) 
+                        and d.startswith('run_')]
+        run_numbers = [int(d.split('_')[1]) for d in existing_runs 
+                     if d.split('_')[1].isdigit()]
+        next_run_number = max(run_numbers) + 1 if run_numbers else 1
+        
+        # Set up directory structure
+        self.output_dir = os.path.join(runs_dir, f'run_{next_run_number}')
+        os.makedirs(self.output_dir, exist_ok=True)
+        os.makedirs(f"{self.output_dir}/models", exist_ok=True)
+        os.makedirs(f"{self.output_dir}/plots", exist_ok=True)
+        
+        # Update run name to match directory
+        self.run_name = f"run_{next_run_number}"
+        
+        print(f"Created DQN run directory: {self.output_dir}")
     
     def train(self) -> Dict[str, Any]:
         """

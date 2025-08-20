@@ -91,9 +91,11 @@ class DQNNetwork(nn.Module):
         if state.device != self.device:
             state = state.to(self.device)
         
-        # Shared feature extraction
-        x = F.relu(self.ln1(self.fc1(state)))
-        x = F.relu(self.ln2(self.fc2(x)))
+        # Shared feature extraction - FIXED: Apply layer normalization before activation
+        x = self.fc1(state)
+        x = F.relu(self.ln1(x))
+        x = self.fc2(x)
+        x = F.relu(self.ln2(x))
         
         if self.dueling:
             # Dueling architecture

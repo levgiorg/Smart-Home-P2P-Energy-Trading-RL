@@ -86,7 +86,17 @@ class ActionDiscretizer:
             
         Returns:
             List of continuous action values [hvac_energy, battery_action, selling_price]
+            
+        Raises:
+            TypeError: If discrete_action is not an integer
+            ValueError: If discrete_action is out of valid range
         """
+        # FIXED: Add comprehensive input validation
+        if not isinstance(discrete_action, (int, np.integer)):
+            raise TypeError(f"Discrete action must be integer, got {type(discrete_action)}")
+        
+        discrete_action = int(discrete_action)  # Convert numpy integers
+        
         if discrete_action < 0 or discrete_action >= self.total_actions:
             raise ValueError(f"Discrete action {discrete_action} out of range [0, {self.total_actions-1}]")
         
@@ -101,13 +111,44 @@ class ActionDiscretizer:
             
         Returns:
             Nearest discrete action index
+            
+        Raises:
+            TypeError: If continuous_action is not a supported type
+            ValueError: If continuous_action doesn't have exactly 3 elements
         """
+        # FIXED: Add comprehensive input validation
         if isinstance(continuous_action, torch.Tensor):
+            if continuous_action.dim() > 1:
+                raise ValueError(f"Expected 1D tensor, got {continuous_action.dim()}D")
             continuous_action = continuous_action.detach().cpu().numpy()
-        if isinstance(continuous_action, np.ndarray):
+        elif isinstance(continuous_action, np.ndarray):
+            if continuous_action.ndim > 1:
+                raise ValueError(f"Expected 1D array, got {continuous_action.ndim}D")
             continuous_action = continuous_action.tolist()
+        elif not isinstance(continuous_action, (list, tuple)):
+            raise TypeError(f"Unsupported action type: {type(continuous_action)}")
+        
+        if len(continuous_action) != 3:
+            raise ValueError(f"Expected 3 action values, got {len(continuous_action)}")
         
         hvac_val, battery_val, price_val = continuous_action
+        
+        # Validate action bounds
+        hvac_min, hvac_max = self.action_bounds['hvac_energy']
+        battery_min, battery_max = self.action_bounds['battery_action']
+        price_min, price_max = self.action_bounds['selling_price']
+        
+        if not (hvac_min <= hvac_val <= hvac_max):
+            print(f"Warning: HVAC value {hvac_val} outside bounds [{hvac_min}, {hvac_max}], clipping")
+            hvac_val = np.clip(hvac_val, hvac_min, hvac_max)
+        
+        if not (battery_min <= battery_val <= battery_max):
+            print(f"Warning: Battery value {battery_val} outside bounds [{battery_min}, {battery_max}], clipping")
+            battery_val = np.clip(battery_val, battery_min, battery_max)
+            
+        if not (price_min <= price_val <= price_max):
+            print(f"Warning: Price value {price_val} outside bounds [{price_min}, {price_max}], clipping")
+            price_val = np.clip(price_val, price_min, price_max)
         
         # Find nearest discrete indices
         hvac_idx = self._find_nearest_index(hvac_val, self.hvac_continuous_values)
@@ -183,10 +224,18 @@ class ActionDiscretizer:
             discrete_actions = np.array(discrete_actions)
         
         batch_size = len(discrete_actions)
-        continuous_actions = np.zeros((batch_size, 3))
         
-        for i, action in enumerate(discrete_actions):
-            continuous_actions[i] = self.discrete_to_continuous(int(action))
+        # FIXED: Vectorized batch processing for efficiency
+        discrete_actions = discrete_actions.astype(int)
+        
+        # Validate all actions at once
+        invalid_mask = (discrete_actions < 0) | (discrete_actions >= self.total_actions)
+        if np.any(invalid_mask):
+            invalid_actions = discrete_actions[invalid_mask]
+            raise ValueError(f"Invalid actions found: {invalid_actions}")
+        
+        # Vectorized conversion using lookup arrays
+        continuous_actions = np.array([self.action_to_continuous[action] for action in discrete_actions])
         
         return continuous_actions
     
