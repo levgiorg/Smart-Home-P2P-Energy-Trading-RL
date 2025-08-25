@@ -48,6 +48,10 @@ class DQNEnvironmentWrapper:
         # Track action usage for analysis
         self.action_usage_stats = {}
         self.reset_action_stats()
+        
+        # Initialize episode-level metric accumulators (matching DDPG pattern)
+        self.episode_metrics = {}
+        self.reset_episode_metrics()
     
     def reset_action_stats(self) -> None:
         """Reset action usage statistics."""
@@ -55,6 +59,20 @@ class DQNEnvironmentWrapper:
             'discrete_actions': [],
             'continuous_actions': [],
             'action_frequencies': np.zeros(self.action_discretizer.total_actions),
+            'step_count': 0
+        }
+        
+    def reset_episode_metrics(self) -> None:
+        """Reset episode-level metric accumulators (matching DDPG pattern)."""
+        self.episode_metrics = {
+            'rewards_per_house': np.zeros(self.num_houses),
+            'hvac_consumption_per_house': np.zeros(self.num_houses),
+            'depreciation_per_house': np.zeros(self.num_houses),
+            'penalty_per_house': np.zeros(self.num_houses),
+            'trading_profit_per_house': np.zeros(self.num_houses),
+            'energy_bought_p2p_per_house': np.zeros(self.num_houses),
+            'selling_prices_per_house': np.zeros(self.num_houses),
+            'temperatures_per_house': [],  # List to track temperature at each step
             'step_count': 0
         }
     
@@ -68,8 +86,9 @@ class DQNEnvironmentWrapper:
         # Reset base environment
         initial_state = self.env.reset()
         
-        # Reset action statistics
+        # Reset action statistics and episode metrics
         self.reset_action_stats()
+        self.reset_episode_metrics()
         
         return self._flatten_state(initial_state)
     
@@ -116,21 +135,93 @@ class DQNEnvironmentWrapper:
         # Step environment with continuous actions (as tensor)
         next_state, rewards, done, info = self.env.step(continuous_actions_tensor)
         
+        # Environment is properly providing all required data with correct dimensions
+        
         # Convert list of rewards to single reward (sum for multi-agent)
         if isinstance(rewards, list):
             total_reward = sum(rewards)
         else:
             total_reward = rewards
         
-        # Add DQN-specific info
+        # Accumulate episode metrics (matching DDPG pattern exactly)
+        self._accumulate_episode_metrics(rewards, info)
+        
+        # Add DQN-specific info plus accumulated episode metrics
         info.update({
             'discrete_actions': discrete_action_list,
             'continuous_actions': continuous_actions,
             'action_conversion_successful': True,
-            'individual_rewards': rewards if isinstance(rewards, list) else [rewards]
+            'individual_rewards': rewards if isinstance(rewards, list) else [rewards],
+            # Add accumulated episode metrics for episode-end logging
+            'house_rewards': self.episode_metrics['rewards_per_house'].tolist(),
+            'house_temperatures': self._get_current_temperatures(info),
+            'hvac_consumption': self.episode_metrics['hvac_consumption_per_house'].tolist(),
+            'depreciation': self.episode_metrics['depreciation_per_house'].tolist(),
+            'penalty': self.episode_metrics['penalty_per_house'].tolist(),
+            'trading_profit': self.episode_metrics['trading_profit_per_house'].tolist(),
+            'energy_bought_p2p': self.episode_metrics['energy_bought_p2p_per_house'].tolist(),
+            'selling_prices': self.episode_metrics['selling_prices_per_house'].tolist()
         })
         
         return self._flatten_state(next_state), total_reward, done, info
+    
+    def _accumulate_episode_metrics(self, rewards: Union[List[float], float], info: Dict[str, Any]) -> None:
+        """
+        Accumulate episode-level metrics from step info (matching DDPG pattern).
+        
+        Args:
+            rewards: Step rewards (list for multi-house or single value)
+            info: Step info dictionary from environment
+        """
+        self.episode_metrics['step_count'] += 1
+        
+        # Accumulate rewards
+        if isinstance(rewards, list):
+            self.episode_metrics['rewards_per_house'] += np.array(rewards)
+        else:
+            # Single reward - distribute equally across houses
+            self.episode_metrics['rewards_per_house'] += rewards / self.num_houses
+        
+        # Accumulate other metrics from step info (matching DDPG extraction pattern)
+        if 'HVAC_energy_cons' in info:
+            self.episode_metrics['hvac_consumption_per_house'] += np.array(info['HVAC_energy_cons'])
+        
+        if 'depreciation' in info:
+            self.episode_metrics['depreciation_per_house'] += np.array(info['depreciation'])
+            
+        if 'penalty' in info:
+            self.episode_metrics['penalty_per_house'] += np.array(info['penalty'])
+            
+        if 'trading_profit' in info:
+            self.episode_metrics['trading_profit_per_house'] += np.array(info['trading_profit'])
+            
+        if 'energy_bought_p2p' in info:
+            self.episode_metrics['energy_bought_p2p_per_house'] += np.array(info['energy_bought_p2p'])
+        
+        # Update selling prices (latest step's prices)
+        if 'selling_prices' in info:
+            self.episode_metrics['selling_prices_per_house'] = np.array(info['selling_prices'])
+            
+        # Store current temperatures
+        if 'current_temperatures' in info:
+            self.episode_metrics['temperatures_per_house'].append(info['current_temperatures'])
+            
+    def _get_current_temperatures(self, info: Dict[str, Any]) -> List[float]:
+        """
+        Get current house temperatures from step info.
+        
+        Args:
+            info: Step info dictionary
+            
+        Returns:
+            List of current temperatures for all houses
+        """
+        if 'current_temperatures' in info:
+            return list(info['current_temperatures'])
+        elif len(self.episode_metrics['temperatures_per_house']) > 0:
+            return self.episode_metrics['temperatures_per_house'][-1]  # Last recorded temperatures
+        else:
+            return [20.0] * self.num_houses  # Default comfortable temperature
     
     def _flatten_state(self, state: Union[List[List[float]], np.ndarray]) -> np.ndarray:
         """

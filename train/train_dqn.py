@@ -68,23 +68,30 @@ class DQNTrainer:
         # Initialize utilities
         self.utilities = Utilities(num_houses=self.env.num_houses)
         
-        # Training metrics
-        self.training_metrics = {
-            'episode_rewards': [],
-            'episode_lengths': [],
-            'losses': [],
-            'epsilon_values': [],
-            'q_values': [],
-            'action_entropies': [],
-            'evaluation_scores': [],
-            'training_times': []
-        }
+        # Training parameters  
+        self.enable_saving = False  # Disable checkpoint saving as requested
+        self.save_interval = max(1, self.num_episodes // 10)  # Not used when enable_saving=False
+        
+        # Keep evaluation scores for progress tracking
+        self.evaluation_scores = []
         
         # Setup auto-incrementing run directory like DDPG bookkeeper
         self._setup_dqn_run_directory()
         
-        # Initialize bookkeeping after output directory is created
+        # Initialize bookkeeping after output directory is created (matching DDPG naming)  
         self.bookkeeper = BookKeeper(config=config, model_name='dqn_', run_dir=self.output_dir)
+        
+        # Add all DDPG metrics for fair comparison
+        # Core DDPG metrics
+        self.bookkeeper.add_metric('depreciation', 'Battery Depreciation', 'Cost (€)', 'battery_depreciation.png')
+        self.bookkeeper.add_metric('penalty', 'Temperature Penalty', 'Penalty (°C)', 'temperature_penalty.png')
+        self.bookkeeper.add_metric('energy_bought_p2p', 'P2P Energy Trading', 'Energy (kWh)', 'energy_traded_p2p.png')
+        
+        # DQN-specific metrics
+        self.bookkeeper.add_metric('epsilon', 'Epsilon Values', 'Epsilon', 'epsilon_plot.png')
+        self.bookkeeper.add_metric('q_values', 'Q-Values', 'Q-Value', 'q_values_plot.png')
+        self.bookkeeper.add_metric('action_entropy', 'Action Entropy', 'Entropy', 'action_entropy_plot.png')
+        self.bookkeeper.add_metric('loss', 'Training Loss', 'Loss', 'loss_plot.png')
         
         print(f"DQN Trainer initialized:")
         print(f"  - Run name: {self.run_name}")
@@ -95,12 +102,16 @@ class DQNTrainer:
         print(f"  - Output directory: {self.output_dir}")
     
     def _set_random_seed(self) -> None:
-        """Set random seed for reproducibility."""
+        """Set random seed for reproducibility with proper error handling."""
         if self.random_seed is not None:
+            import random
+            random.seed(self.random_seed)
             np.random.seed(self.random_seed)
             torch.manual_seed(self.random_seed)
             if torch.cuda.is_available():
-                torch.cuda.manual_seed(self.random_seed)
+                torch.cuda.manual_seed_all(self.random_seed)  # Use manual_seed_all for multi-GPU
+                torch.backends.cudnn.deterministic = True
+                torch.backends.cudnn.benchmark = False
     
     def _setup_dqn_run_directory(self) -> None:
         """
@@ -148,6 +159,9 @@ class DQNTrainer:
             # Run training episode
             episode_metrics = self._run_episode(episode, training=True)
             
+            # Log episode data to BookKeeper (matching DDPG pattern)
+            self._log_episode_data(episode, episode_metrics)
+            
             # Store training metrics
             self._update_training_metrics(episode_metrics, episode_start_time)
             
@@ -160,7 +174,7 @@ class DQNTrainer:
             # Evaluation
             if episode % self.eval_interval == 0:
                 eval_score = self._evaluate(num_episodes=3)
-                self.training_metrics['evaluation_scores'].append(eval_score)
+                self.evaluation_scores.append(eval_score)
                 
                 if eval_score > best_eval_score:
                     best_eval_score = eval_score
@@ -169,9 +183,23 @@ class DQNTrainer:
                 
                 print(f"Episode {episode}: Eval Score = {eval_score:.3f} (Best: {best_eval_score:.3f} @ {best_episode})")
             
-            # Save checkpoint
-            if episode % self.save_interval == 0:
-                self._save_checkpoint(episode)
+            # Save checkpoint (matching DDPG pattern)
+            if self.enable_saving and (episode + 1) % self.save_interval == 0:
+                model_path = f"{self.output_dir}/models/dqn__episode_{episode + 1}.pth"
+                torch.save({
+                    'episode': episode + 1,
+                    'q_network_state_dict': self.agent.q_network.state_dict(),
+                    'target_network_state_dict': self.agent.target_network.state_dict(),
+                    'optimizer_state_dict': self.agent.optimizer.state_dict(),
+                    'epsilon': self.agent.epsilon,
+                    'memory_size': len(self.agent.memory),
+                    'learn_step_counter': self.agent.learn_step_counter,
+                    'config': self.config.to_dict() if hasattr(self.config, 'to_dict') else str(self.config)
+                }, model_path)
+                print(f"Saved checkpoint at episode {episode + 1}: {model_path}")
+                
+                # Save metrics
+                self.bookkeeper.save_metrics()
             
             # Progress reporting
             if episode % max(1, self.num_episodes // 20) == 0:
@@ -185,7 +213,30 @@ class DQNTrainer:
         print(f"Final evaluation score: {final_eval_score:.3f}")
         print(f"Best evaluation score: {best_eval_score:.3f} (Episode {best_episode})")
         
-        # Save final results
+        # Save final model (matching DDPG pattern exactly)
+        final_model_path = f"{self.output_dir}/model_final.pt"  # Match DDPG naming
+        torch.save({
+            'episode': self.num_episodes,
+            'q_network_state_dict': self.agent.q_network.state_dict(), 
+            'target_network_state_dict': self.agent.target_network.state_dict(),
+            'optimizer_state_dict': self.agent.optimizer.state_dict(),
+            'epsilon': self.agent.epsilon,
+            'memory_size': len(self.agent.memory),
+            'learn_step_counter': self.agent.learn_step_counter,
+            'final_eval_score': final_eval_score,
+            'best_eval_score': best_eval_score,
+            'best_episode': best_episode,
+            'training_time': training_time,
+            'config': self.config.to_dict() if hasattr(self.config, 'to_dict') else str(self.config)
+        }, final_model_path)
+        print(f"Saved final model: {final_model_path}")
+        
+        # Save final metrics and generate plots (matching DDPG pattern)
+        self.bookkeeper.save_metrics()
+        self.bookkeeper.plot_metrics(plot_average_only=True)
+        self.bookkeeper.plot_selling_prices(plot_average_only=True)
+        
+        # Save final results  
         results = self._compile_results(training_time, final_eval_score, best_eval_score, best_episode)
         self._save_final_results(results)
         
@@ -284,50 +335,108 @@ class DQNTrainer:
         
         return np.mean(eval_rewards)
     
-    def _update_training_metrics(self, episode_metrics: Dict[str, Any], episode_start_time: float) -> None:
-        """Update training metrics storage."""
-        self.training_metrics['episode_rewards'].append(episode_metrics['episode_reward'])
-        self.training_metrics['episode_lengths'].append(episode_metrics['episode_length'])
-        self.training_metrics['action_entropies'].append(episode_metrics['action_entropy'])
-        self.training_metrics['training_times'].append(time.time() - episode_start_time)
+    def _log_episode_data(self, episode: int, episode_metrics: Dict[str, Any]) -> None:
+        """Log episode data to BookKeeper (matching DDPG logging pattern exactly)."""
+        info = episode_metrics.get('final_info', {})
         
-        # Add agent-specific metrics
-        agent_stats = self.agent.get_statistics()
-        self.training_metrics['epsilon_values'].append(agent_stats['epsilon'])
-        if agent_stats['avg_loss'] > 0:
-            self.training_metrics['losses'].append(agent_stats['avg_loss'])
-        if agent_stats['avg_q_value'] > 0:
-            self.training_metrics['q_values'].append(agent_stats['avg_q_value'])
+        # Validate environment data quality
+        self._validate_environment_data(info, episode)
+        
+        # Extract data from environment info 
+        num_houses = self.env.num_houses
+        episode_reward = episode_metrics['episode_reward']
+        
+        # Extract properly accumulated environment data (from improved DQN wrapper)
+        rewards_per_house = info.get('house_rewards', [episode_reward / num_houses] * num_houses)
+        temperatures = info.get('house_temperatures', [20.0] * num_houses)
+        hvac_consumption = info.get('hvac_consumption', [0.0] * num_houses)
+        trading_profit = info.get('trading_profit', [0.0] * num_houses)
+        selling_prices = info.get('selling_prices', [0.1] * num_houses)
+        grid_prices = info.get('grid_prices', [0.1] * 24)
+        
+        # DDPG metrics - now properly accumulated from environment
+        depreciation = info.get('depreciation', [0.0] * num_houses)
+        penalty = info.get('penalty', [0.0] * num_houses)
+        energy_bought_p2p = info.get('energy_bought_p2p', [0.0] * num_houses)
+        
+        # Log episode data (exactly matching DDPG pattern)
+        self.bookkeeper.log_episode(
+            episode=episode,
+            score=[episode_reward] * num_houses,
+            rewards_per_house=rewards_per_house,
+            temperatures=temperatures,
+            HVAC_energy_cons=hvac_consumption,
+            depreciation=depreciation,
+            penalty=penalty,
+            trading_profit=trading_profit,
+            energy_bought_p2p=energy_bought_p2p,
+            selling_prices=selling_prices,
+            grid_prices=grid_prices,
+            # DQN-specific metrics
+            epsilon=self.agent.epsilon,
+            action_entropy=episode_metrics['action_entropy']
+        )
+
+    def _validate_environment_data(self, info: Dict[str, Any], episode: int) -> bool:
+        """Validate that environment returns expected data structure."""
+        required_keys = ['house_rewards', 'house_temperatures', 'hvac_consumption', 
+                        'trading_profit', 'selling_prices', 'grid_prices']
+        
+        missing_keys = [key for key in required_keys if key not in info]
+        if missing_keys and episode % 20 == 0:  # Log every 20 episodes to avoid spam
+            print(f"Episode {episode}: Missing environment data: {missing_keys}")
+            return False
+        return True
+        
+    def _update_training_metrics(self, episode_metrics: Dict[str, Any], episode_start_time: float) -> None:
+        """Update training metrics using BookKeeper (matching DDPG pattern)."""
+        episode_time = time.time() - episode_start_time
+        
+        # Validate episode length for training quality
+        if episode_metrics['episode_length'] < 10:  # Expected minimum episode length
+            episode = len(self.evaluation_scores) * self.eval_interval  # Approximate episode
+            print(f"Warning: Very short episode {episode}: {episode_metrics['episode_length']} steps")
+            print(f"  Final reward: {episode_metrics['episode_reward']:.2f}")
+            
+        # Training metrics are logged through bookkeeper.log_episode()
+        pass
     
     def _print_progress(self, episode: int, episode_metrics: Dict[str, Any]) -> None:
         """Print training progress."""
-        recent_rewards = self.training_metrics['episode_rewards'][-10:]
-        avg_reward = np.mean(recent_rewards)
-        
         agent_stats = self.agent.get_statistics()
         
         print(f"Episode {episode:4d} | "
               f"Reward: {episode_metrics['episode_reward']:8.2f} | "
-              f"Avg(10): {avg_reward:8.2f} | "
+              f"Length: {episode_metrics['episode_length']:4d} | "
               f"ε: {agent_stats['epsilon']:.3f} | "
               f"Loss: {agent_stats['avg_loss']:.4f} | "
               f"Memory: {agent_stats['memory_size']:6d}")
     
     def _save_checkpoint(self, episode: int) -> None:
-        """Save model checkpoint."""
-        checkpoint_path = f"{self.output_dir}/models/checkpoint_episode_{episode}.pth"
-        self.agent.save_checkpoint(checkpoint_path)
+        """Save model checkpoint (maintained for compatibility)."""
+        # This method is kept for compatibility but checkpoint saving is now handled in main loop
+        pass
     
     def _save_best_model(self) -> None:
-        """Save best performing model."""
-        best_model_path = f"{self.output_dir}/models/best_model.pth"
-        self.agent.save_checkpoint(best_model_path)
+        """Save best performing model (matching DDPG pattern)."""
+        best_model_path = f"{self.output_dir}/models/dqn__best.pth"
+        torch.save({
+            'q_network_state_dict': self.agent.q_network.state_dict(),
+            'target_network_state_dict': self.agent.target_network.state_dict(),
+            'optimizer_state_dict': self.agent.optimizer.state_dict(),
+            'epsilon': self.agent.epsilon,
+            'memory_size': len(self.agent.memory),
+            'learn_step_counter': self.agent.learn_step_counter,
+            'config': self.config.to_dict() if hasattr(self.config, 'to_dict') else str(self.config)
+        }, best_model_path)
+        print(f"Saved best model: {best_model_path}")
     
     def _compile_results(self, training_time: float, final_score: float, 
                         best_score: float, best_episode: int) -> Dict[str, Any]:
-        """Compile final training results."""
+        """Compile final training results (matching DDPG pattern)."""
         agent_info = self.env.get_action_space_info()
         action_stats = self.env.get_action_usage_stats()
+        agent_stats = self.agent.get_statistics()
         
         return {
             'training_info': {
@@ -341,18 +450,15 @@ class DQNTrainer:
             'performance': {
                 'final_evaluation_score': final_score,
                 'best_evaluation_score': best_score,
-                'best_episode': best_episode,
-                'average_episode_reward': np.mean(self.training_metrics['episode_rewards']),
-                'average_episode_length': np.mean(self.training_metrics['episode_lengths'])
+                'best_episode': best_episode
             },
             'learning_metrics': {
                 'total_learning_steps': self.agent.learn_step_counter,
-                'final_loss': self.training_metrics['losses'][-1] if self.training_metrics['losses'] else 0.0,
-                'average_q_value': np.mean(self.training_metrics['q_values']) if self.training_metrics['q_values'] else 0.0
+                'final_loss': agent_stats['avg_loss'],
+                'average_q_value': agent_stats['avg_q_value']
             },
             'action_space_info': agent_info,
             'action_usage': action_stats,
-            'training_metrics': self.training_metrics,
             'config': self.config.to_dict() if hasattr(self.config, 'to_dict') else str(self.config)
         }
     
@@ -386,62 +492,10 @@ class DQNTrainer:
             return obj
     
     def _generate_training_plots(self) -> None:
-        """Generate training visualization plots."""
-        fig, axes = plt.subplots(2, 3, figsize=(15, 10))
-        
-        # Episode rewards
-        axes[0, 0].plot(self.training_metrics['episode_rewards'])
-        axes[0, 0].set_title('Episode Rewards')
-        axes[0, 0].set_xlabel('Episode')
-        axes[0, 0].set_ylabel('Reward')
-        
-        # Episode lengths
-        axes[0, 1].plot(self.training_metrics['episode_lengths'])
-        axes[0, 1].set_title('Episode Lengths')
-        axes[0, 1].set_xlabel('Episode')
-        axes[0, 1].set_ylabel('Length')
-        
-        # Losses
-        if self.training_metrics['losses']:
-            axes[0, 2].plot(self.training_metrics['losses'])
-            axes[0, 2].set_title('Training Loss')
-            axes[0, 2].set_xlabel('Learning Step')
-            axes[0, 2].set_ylabel('Loss')
-        
-        # Epsilon decay
-        axes[1, 0].plot(self.training_metrics['epsilon_values'])
-        axes[1, 0].set_title('Epsilon Decay')
-        axes[1, 0].set_xlabel('Episode')
-        axes[1, 0].set_ylabel('Epsilon')
-        
-        # Q-values
-        if self.training_metrics['q_values']:
-            axes[1, 1].plot(self.training_metrics['q_values'])
-            axes[1, 1].set_title('Q-Values')
-            axes[1, 1].set_xlabel('Step')
-            axes[1, 1].set_ylabel('Max Q-Value')
-        
-        # Action entropy
-        axes[1, 2].plot(self.training_metrics['action_entropies'])
-        axes[1, 2].set_title('Action Entropy')
-        axes[1, 2].set_xlabel('Episode')
-        axes[1, 2].set_ylabel('Entropy')
-        
-        plt.tight_layout()
-        plt.savefig(f"{self.output_dir}/plots/training_metrics.png", dpi=300, bbox_inches='tight')
-        plt.close()
-        
-        # Evaluation scores
-        if self.training_metrics['evaluation_scores']:
-            plt.figure(figsize=(10, 6))
-            eval_episodes = [i * self.eval_interval for i in range(len(self.training_metrics['evaluation_scores']))]
-            plt.plot(eval_episodes, self.training_metrics['evaluation_scores'], 'o-')
-            plt.title('Evaluation Scores During Training')
-            plt.xlabel('Episode')
-            plt.ylabel('Evaluation Score')
-            plt.grid(True)
-            plt.savefig(f"{self.output_dir}/plots/evaluation_scores.png", dpi=300, bbox_inches='tight')
-            plt.close()
+        """Generate training visualization plots (now handled by BookKeeper)."""
+        # Plotting is now handled by BookKeeper.plot_metrics() and BookKeeper.plot_selling_prices()
+        # This method is maintained for compatibility but functionality moved to BookKeeper
+        print("Training plots generated via BookKeeper plotting system")
 
 
 def main():

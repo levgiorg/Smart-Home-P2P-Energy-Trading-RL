@@ -17,3 +17,5 @@ __pycache__/
 pyrefly.toml
 *.md
 .claude/
+.claudeignore
+dqn_runs/*
