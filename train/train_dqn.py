@@ -262,33 +262,51 @@ class DQNTrainer:
         
         done = False
         while not done:
-            # Select action
-            if training:
-                discrete_action = self.agent.select_action(state, evaluation=False)
-            else:
-                discrete_action = self.agent.select_action(state, evaluation=True)
+            # Select actions for each house (FIXED: use full state, house-specific actions)
+            house_discrete_actions = []
+            for house_idx in range(env.num_houses):
+                # Use full state but make house-specific decisions
+                if training:
+                    house_action = self.agent.select_action(state, evaluation=False)
+                else:
+                    house_action = self.agent.select_action(state, evaluation=True)
+                    
+                house_discrete_actions.append(house_action)
             
-            discrete_actions_taken.append(discrete_action)
-            
-            # Convert to per-house actions (assuming single house for simplicity)
-            # For multi-house, extend this logic
-            house_actions = [discrete_action] if env.num_houses == 1 else [discrete_action] * env.num_houses
+            discrete_actions_taken.append(house_discrete_actions)  # Store all house actions
+            house_actions = house_discrete_actions
             
             # Take step
             next_state, reward, done, info = env.step(house_actions)
             
-            # Store experience for training
+            # Store experience for training (multi-house with full state)
             if training:
-                self.agent.store_transition(state, discrete_action, reward, next_state, done)
+                # Store one transition per house action using full state
+                for house_idx, house_action in enumerate(house_discrete_actions):
+                    # Use individual house reward if available, otherwise distribute total reward
+                    if hasattr(reward, '__len__') and len(reward) == env.num_houses:
+                        house_reward = reward[house_idx]
+                    else:
+                        house_reward = reward / env.num_houses
+                    
+                    self.agent.store_transition(state, house_action, house_reward, next_state, done)
             
             # Update for next iteration
             state = next_state
             episode_reward += reward
             episode_length += 1
         
-        # Compute action entropy for analysis
-        action_counts = np.bincount(discrete_actions_taken, minlength=self.agent.num_actions)
-        action_probs = action_counts / max(len(discrete_actions_taken), 1)
+        # Compute action entropy for analysis (multi-house)
+        # Flatten all house actions across all steps
+        all_actions_flat = []
+        for step_actions in discrete_actions_taken:
+            if isinstance(step_actions, list):
+                all_actions_flat.extend(step_actions) 
+            else:
+                all_actions_flat.append(step_actions)
+        
+        action_counts = np.bincount(all_actions_flat, minlength=self.agent.num_actions)
+        action_probs = action_counts / max(len(all_actions_flat), 1)
         action_entropy = -np.sum(action_probs * np.log(action_probs + 1e-8))
         
         return {
@@ -296,6 +314,8 @@ class DQNTrainer:
             'episode_length': episode_length,
             'action_entropy': action_entropy,
             'discrete_actions': discrete_actions_taken,
+            'total_actions_taken': len(all_actions_flat),
+            'unique_actions_used': len(np.unique(all_actions_flat)),
             'final_info': info
         }
     

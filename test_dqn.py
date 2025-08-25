@@ -69,18 +69,16 @@ def test_dqn_environment():
     action_info = env.get_action_space_info()
     print(f"Action space info: {action_info}")
     
-    # Test environment step
-    random_action = env.sample_random_discrete_action()
-    house_actions = [random_action] if env.num_houses == 1 else [random_action] * env.num_houses
+    # Test environment step - FIXED: Generate independent actions per house
+    house_actions = [env.sample_random_discrete_action() for _ in range(env.num_houses)]
     
     next_state, reward, done, info = env.step(house_actions)
     print(f"Step result: state_shape={next_state.shape}, reward={reward:.3f}, done={done}")
     print(f"Action info: {info.get('discrete_actions', [])}")
     
-    # Test a few more steps
+    # Test a few more steps - FIXED: Generate independent actions per house
     for i in range(3):
-        random_action = env.sample_random_discrete_action()
-        house_actions = [random_action] * env.num_houses
+        house_actions = [env.sample_random_discrete_action() for _ in range(env.num_houses)]
         next_state, reward, done, info = env.step(house_actions)
         print(f"Step {i+2}: reward={reward:.3f}, done={done}")
         if done:
@@ -183,17 +181,20 @@ def test_integration():
     steps = 0
     
     for step in range(20):  # Short episode
-        # Select action
-        discrete_action = agent.select_action(state, evaluation=False)
+        # FIXED: Generate independent actions per house instead of broadcasting
+        house_actions = []
+        for house_idx in range(env.num_houses):
+            discrete_action = agent.select_action(state, evaluation=False)
+            house_actions.append(discrete_action)
         
-        # Convert to house actions
-        house_actions = [discrete_action] * env.num_houses
+        # Use first action for experience storage (representative)
+        representative_action = house_actions[0]
         
         # Take step
         next_state, reward, done, info = env.step(house_actions)
         
-        # Store experience
-        agent.store_transition(state, discrete_action, reward, next_state, done)
+        # Store experience using representative action
+        agent.store_transition(state, representative_action, reward, next_state, done)
         
         # Learn (after some experience)
         if step > 10:

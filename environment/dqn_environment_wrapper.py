@@ -105,8 +105,10 @@ class DQNEnvironmentWrapper:
         """
         # Handle different input formats - FIXED: Always expect list/array of per-house actions
         if isinstance(discrete_actions, int):
-            # Single action for all houses (broadcasting)
-            discrete_action_list = [discrete_actions] * self.num_houses
+            # FIXED: No broadcasting - require independent actions per house
+            raise ValueError(f"Single discrete action not allowed for multi-house environment. "
+                           f"Expected list/array of {self.num_houses} actions, got single int {discrete_actions}. "
+                           f"Use independent action selection for each house.")
         elif isinstance(discrete_actions, (list, np.ndarray)):
             discrete_action_list = list(discrete_actions)
         else:

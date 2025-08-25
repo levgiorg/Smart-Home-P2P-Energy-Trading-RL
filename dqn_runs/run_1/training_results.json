@@ -2,7 +2,7 @@
   "training_info": {
     "algorithm": "DQN",
     "run_name": "run_1",
-    "training_time": 4.761039972305298,
+    "training_time": 4.373214960098267,
     "total_episodes": 100,
     "random_seed": 42,
     "final_epsilon": 0.6088145090359074
@@ -2176,5 +2176,5 @@
     },
     "unique_actions_used": 17
   },
-  "config": "<hyperparameters.hyperparameters.Config object at 0x11b847620>"
+  "config": "<hyperparameters.hyperparameters.Config object at 0x1023f32c0>"
 }
