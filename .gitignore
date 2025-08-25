@@ -20,3 +20,4 @@ pyrefly.toml
 .claudeignore
 dqn_runs/*
 runs/*
+*.yaml

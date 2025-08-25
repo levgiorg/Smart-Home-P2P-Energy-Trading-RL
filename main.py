@@ -6,8 +6,15 @@ import json
 
 from hyperparameters import Config
 from train import train_ddpg
+from train.train_dqn import main as train_dqn
 
-def run_experiments():
+def run_experiments(algorithm='ddpg'):
+    """
+    Run experiments with specified algorithm.
+    
+    Args:
+        algorithm: 'ddpg' or 'dqn' for algorithm selection
+    """
     config = Config()
     original_config = json.loads(json.dumps(Config.config))
 
@@ -101,8 +108,8 @@ def run_experiments():
             config.set('cost_model', 'price_penalty', price_p)
             config.set('environment', 'battery_charging_efficiency', n_c)
             config.set('environment', 'battery_discharging_efficiency', n_d)
-            print(f"\nRunning multi-objective experiment with {mechanism_name}, beta={beta}, fee={fee}")
-            main()
+            print(f"\nRunning multi-objective experiment with {mechanism_name} ({algorithm.upper()}), beta={beta}, fee={fee}")
+            main(algorithm)
 
         for fee, init_price, min_price in experiments['trading_optimization']:
             config = reset_config()
@@ -112,34 +119,53 @@ def run_experiments():
             config.set('environment', 'grid_fee', fee)
             config.set('environment', 'initial_selling_price_ratio', init_price)
             config.set('environment', 'min_selling_price', min_price)
-            print(f"\nRunning trading optimization with {mechanism_name}, fee={fee}, init_price={init_price}")
-            main()
+            print(f"\nRunning trading optimization with {mechanism_name} ({algorithm.upper()}), fee={fee}, init_price={init_price}")
+            main(algorithm)
 
         for fc1, fc2, fc3 in experiments['network_advanced']:
             config = reset_config()
             for key, value in anti_cartel_config.items():
                 config.set('anti_cartel', key, value)
             config.set('environment', 'num_houses', 10)
-            config.set('actor', 'fc1_dims', fc1)
-            config.set('actor', 'fc2_dims', fc2)
-            config.set('critic', 'fc1_dims', fc1)
-            config.set('critic', 'fc2_dims', fc2)
-            config.set('critic', 'fc3_dims', fc3)
-            print(f"\nRunning advanced network with {mechanism_name}, architecture: {fc1}, {fc2}, {fc3}")
-            main()
+            
+            # Set network parameters based on algorithm
+            if algorithm.lower() == 'dqn':
+                # DQN uses different parameter names
+                config.set('dqn_agent', 'fc1_dims', fc1)
+                config.set('dqn_agent', 'fc2_dims', fc2)
+                config.set('dqn_agent', 'fc3_dims', fc3)
+            else:
+                # DDPG uses actor/critic parameters
+                config.set('actor', 'fc1_dims', fc1)
+                config.set('actor', 'fc2_dims', fc2)
+                config.set('critic', 'fc1_dims', fc1)
+                config.set('critic', 'fc2_dims', fc2)
+                config.set('critic', 'fc3_dims', fc3)
+            print(f"\nRunning advanced network with {mechanism_name} ({algorithm.upper()}), architecture: {fc1}, {fc2}, {fc3}")
+            main(algorithm)
 
         for actor_lr, critic_lr, batch_size, memory_size, update_interval in experiments['learning_advanced']:
             config = reset_config()
             for key, value in anti_cartel_config.items():
                 config.set('anti_cartel', key, value)
             config.set('environment', 'num_houses', 10)
-            config.set('rl_agent', 'learning_rate_actor', actor_lr)
-            config.set('rl_agent', 'learning_rate_critic', critic_lr)
-            config.set('rl_agent', 'batch_size', batch_size)
-            config.set('rl_agent', 'memory_size', memory_size)
-            config.set('rl_agent', 'update_interval', update_interval)
-            print(f"\nRunning advanced learning with {mechanism_name}, actor_lr={actor_lr}, batch_size={batch_size}")
-            main()
+            
+            # Set learning parameters based on algorithm
+            if algorithm.lower() == 'dqn':
+                # DQN uses single learning rate
+                config.set('dqn_agent', 'learning_rate', critic_lr)  # Use critic_lr as main learning rate
+                config.set('rl_agent', 'batch_size', batch_size)
+                config.set('rl_agent', 'memory_size', memory_size)
+                config.set('dqn_agent', 'target_update_freq', update_interval * 10)  # Scale for DQN
+            else:
+                # DDPG uses separate actor/critic learning rates
+                config.set('rl_agent', 'learning_rate_actor', actor_lr)
+                config.set('rl_agent', 'learning_rate_critic', critic_lr)
+                config.set('rl_agent', 'batch_size', batch_size)
+                config.set('rl_agent', 'memory_size', memory_size)
+                config.set('rl_agent', 'update_interval', update_interval)
+            print(f"\nRunning advanced learning with {mechanism_name} ({algorithm.upper()}), lr={critic_lr}, batch_size={batch_size}")
+            main(algorithm)
 
         for cap_min, cap_max, n_c, n_d, initial_charge in experiments['battery_advanced']:
             config = reset_config()
@@ -151,8 +177,8 @@ def run_experiments():
             config.set('environment', 'battery_charging_efficiency', n_c)
             config.set('environment', 'battery_discharging_efficiency', n_d)
             config.set('environment', 'initial_battery_charge', initial_charge)
-            print(f"\nRunning advanced battery with {mechanism_name}, cap_max={cap_max}, efficiency={n_c}")
-            main()
+            print(f"\nRunning advanced battery with {mechanism_name} ({algorithm.upper()}), cap_max={cap_max}, efficiency={n_c}")
+            main(algorithm)
 
         for t_min, t_max, comfort_penalty, hvac_efficiency in experiments['comfort_advanced']:
             config = reset_config()
@@ -163,8 +189,8 @@ def run_experiments():
             config.set('environment', 'temperature_max', t_max)
             config.set('environment', 'comfort_penalty', comfort_penalty)
             config.set('environment', 'hvac_efficiency', hvac_efficiency)
-            print(f"\nRunning advanced comfort with {mechanism_name}, range={t_min}-{t_max}, hvac_eff={hvac_efficiency}")
-            main()
+            print(f"\nRunning advanced comfort with {mechanism_name} ({algorithm.upper()}), range={t_min}-{t_max}, hvac_eff={hvac_efficiency}")
+            main(algorithm)
 
         for beta, comfort_penalty, price_penalty in experiments['reward_stability']:
             config = reset_config()
@@ -174,18 +200,21 @@ def run_experiments():
             config.set('reward', 'beta', beta)
             config.set('environment', 'comfort_penalty', comfort_penalty)
             config.set('cost_model', 'price_penalty', price_penalty)
-            print(f"\nRunning reward stability with {mechanism_name}, beta={beta}, penalties={comfort_penalty},{price_penalty}")
-            main()
+            print(f"\nRunning reward stability with {mechanism_name} ({algorithm.upper()}), beta={beta}, penalties={comfort_penalty},{price_penalty}")
+            main(algorithm)
 
     Config.config = original_config
     with open(Config.config_file_path, "w") as f:
         json.dump(original_config, f, indent=4)
     print("\nOriginal configuration has been restored.")
 
-def main():
-    parser = argparse.ArgumentParser(description="Train DDPG for Smart Home Energy Management")
-    args = parser.parse_args()
-
+def main(algorithm='ddpg'):
+    """
+    Main training function that supports both DDPG and DQN algorithms.
+    
+    Args:
+        algorithm: 'ddpg' or 'dqn' for algorithm selection
+    """
     config = Config()
     random_seed = config.get('simulation', 'random_seed')
 
@@ -202,7 +231,27 @@ def main():
     else:
         print("No random seed set in config. Using random initialization.")
 
-    train_ddpg()
+    # Select training algorithm
+    if algorithm.lower() == 'dqn':
+        print("Training with DQN algorithm")
+        train_dqn()
+    elif algorithm.lower() == 'ddpg':
+        print("Training with DDPG algorithm")
+        train_ddpg()
+    else:
+        raise ValueError(f"Unknown algorithm: {algorithm}. Choose 'ddpg' or 'dqn'")
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Train RL algorithms for Smart Home Energy Management")
+    parser.add_argument('--algorithm', '-a', choices=['ddpg', 'dqn'], default='ddpg',
+                       help='Algorithm to use: ddpg (default) or dqn')
+    parser.add_argument('--experiments', '-e', action='store_true', 
+                       help='Run all experiments instead of single training')
+    
+    args = parser.parse_args()
+    
+    if args.experiments:
+        print(f"Running comprehensive experiments with {args.algorithm.upper()} algorithm")
+        run_experiments(args.algorithm)
+    else:
+        main(args.algorithm)
