@@ -21,3 +21,4 @@ pyrefly.toml
 dqn_runs/*
 runs/*
 *.yaml
+p2p_venv
