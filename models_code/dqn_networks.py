@@ -253,16 +253,15 @@ class DoubleDQNNetwork(nn.Module):
 
 class PrioritizedReplayBuffer:
     """
-    Prioritized Experience Replay buffer for DQN.
+    GPU-optimized Prioritized Experience Replay buffer for maximum VRAM utilization.
     
-    Implements importance sampling to focus learning on transitions
-    with high temporal difference error. This helps with sample efficiency
-    in large action spaces.
+    Stores transitions directly on GPU and implements importance sampling to focus 
+    learning on transitions with high temporal difference error.
     """
     
     def __init__(self, capacity: int, alpha: float = 0.6, beta: float = 0.4, device: str = 'cpu'):
         """
-        Initialize prioritized replay buffer.
+        Initialize GPU-based prioritized replay buffer.
         
         Args:
             capacity: Maximum buffer size
@@ -273,31 +272,72 @@ class PrioritizedReplayBuffer:
         self.capacity = capacity
         self.alpha = alpha
         self.beta = beta
-        self.device = device
+        self.device = torch.device(device)
         
-        # Storage for experiences
-        self.buffer = []
+        # GPU tensor storage for experiences
+        self.states = None
+        self.actions = None 
+        self.rewards = None
+        self.next_states = None
+        self.dones = None
+        self.is_initialized = False
+        
+        # Priority storage (kept on CPU for sampling)
         self.priorities = np.zeros((capacity,), dtype=np.float32)
         self.position = 0
         self.size = 0
     
+    def _initialize_buffers(self, state_dim: int):
+        """Initialize GPU tensor buffers based on first transition dimensions."""
+        print(f"Initializing GPU prioritized replay buffer: {self.capacity} transitions on {self.device}")
+        print(f"Buffer dimensions: state={state_dim}, action=1")
+        
+        # Pre-allocate all memory on GPU for maximum efficiency
+        self.states = torch.zeros((self.capacity, state_dim), dtype=torch.float32, device=self.device)
+        self.actions = torch.zeros((self.capacity,), dtype=torch.long, device=self.device)
+        self.rewards = torch.zeros((self.capacity,), dtype=torch.float32, device=self.device) 
+        self.next_states = torch.zeros((self.capacity, state_dim), dtype=torch.float32, device=self.device)
+        self.dones = torch.zeros((self.capacity,), dtype=torch.bool, device=self.device)
+        
+        self.is_initialized = True
+        
+        # Calculate memory usage
+        total_elements = self.capacity * (2 * state_dim + 3)  # states + next_states + actions + rewards + dones
+        memory_mb = (total_elements * 4) / (1024 * 1024)  # Approximate 4 bytes per element
+        print(f"GPU prioritized buffer allocated: {memory_mb:.1f}MB on {self.device}")
+        
     def add(self, state, action, reward, next_state, done, td_error: Optional[float] = None):
-        """Add experience to buffer with priority."""
+        """Add experience to GPU buffer with priority."""
+        # Convert inputs to GPU tensors
+        state = self._ensure_gpu_tensor(state)
+        action = self._ensure_gpu_tensor(action, dtype=torch.long)
+        reward = self._ensure_gpu_tensor(reward) 
+        next_state = self._ensure_gpu_tensor(next_state)
+        done = self._ensure_gpu_tensor(done, dtype=torch.bool)
+        
+        # Initialize buffers on first use
+        if not self.is_initialized:
+            state_dim = state.numel() if state.dim() > 0 else 1
+            self._initialize_buffers(state_dim)
+            
+        # Store transition directly in GPU memory
+        self.states[self.position] = state.flatten()
+        self.actions[self.position] = action.item() if action.numel() == 1 else action[0]
+        self.rewards[self.position] = reward.item() if reward.numel() == 1 else reward[0]
+        self.next_states[self.position] = next_state.flatten()
+        self.dones[self.position] = done.item() if done.numel() == 1 else done[0]
+        
         # Use maximum priority for new experiences if td_error not provided
         max_priority = self.priorities.max() if self.size > 0 else 1.0
         priority = max_priority if td_error is None else abs(td_error) + 1e-6
-        
-        if self.size < self.capacity:
-            self.buffer.append((state, action, reward, next_state, done))
-            self.size += 1
-        else:
-            self.buffer[self.position] = (state, action, reward, next_state, done)
-        
         self.priorities[self.position] = priority ** self.alpha
+        
+        # Update position and size
         self.position = (self.position + 1) % self.capacity
+        self.size = min(self.size + 1, self.capacity)
     
     def sample(self, batch_size: int) -> Tuple:
-        """Sample batch with importance sampling weights."""
+        """Sample batch with importance sampling weights - zero CPU→GPU transfer cost."""
         if self.size < batch_size:
             raise ValueError(f"Buffer size {self.size} < batch size {batch_size}")
         
@@ -309,22 +349,47 @@ class PrioritizedReplayBuffer:
         weights = (self.size * probs[indices]) ** (-self.beta)
         weights = weights / weights.max()  # Normalize for stability
         
-        # Extract experiences
-        batch = [self.buffer[idx] for idx in indices]
-        states, actions, rewards, next_states, dones = zip(*batch)
+        # Convert indices to GPU tensor for batch indexing
+        gpu_indices = torch.from_numpy(indices).to(self.device)
         
-        # Convert to tensors
-        states = torch.FloatTensor(states).to(self.device)
-        actions = torch.LongTensor(actions).to(self.device)
-        rewards = torch.FloatTensor(rewards).to(self.device)
-        next_states = torch.FloatTensor(next_states).to(self.device)
-        dones = torch.BoolTensor(dones).to(self.device)
-        weights = torch.FloatTensor(weights).to(self.device)
+        # Batch sample directly from GPU memory
+        batch_states = self.states[gpu_indices]
+        batch_actions = self.actions[gpu_indices]
+        batch_rewards = self.rewards[gpu_indices]
+        batch_next_states = self.next_states[gpu_indices]
+        batch_dones = self.dones[gpu_indices]
+        batch_weights = torch.FloatTensor(weights).to(self.device)
         
-        return states, actions, rewards, next_states, dones, weights, indices
+        return batch_states, batch_actions, batch_rewards, batch_next_states, batch_dones, batch_weights, indices
     
     def update_priorities(self, indices: np.ndarray, td_errors: np.ndarray):
         """Update priorities based on TD errors."""
         for idx, td_error in zip(indices, td_errors):
             priority = (abs(td_error) + 1e-6) ** self.alpha
             self.priorities[idx] = priority
+    
+    def _ensure_gpu_tensor(self, data, dtype=torch.float32) -> torch.Tensor:
+        """Convert data to GPU tensor if not already."""
+        if isinstance(data, torch.Tensor):
+            return data.to(self.device).to(dtype)
+        elif isinstance(data, np.ndarray):
+            return torch.from_numpy(data).to(dtype).to(self.device)
+        else:
+            return torch.tensor(data, dtype=dtype, device=self.device)
+    
+    def get_memory_usage(self) -> dict:
+        """Get detailed memory usage statistics."""
+        if not self.is_initialized:
+            return {"status": "not_initialized", "memory_mb": 0}
+            
+        total_elements = self.capacity * (self.states.shape[1] * 2 + 3)  # 2*state_dim + 3 other fields
+        memory_mb = (total_elements * 4) / (1024 * 1024)  # Approximate 4 bytes per element
+        
+        return {
+            "status": "initialized",
+            "capacity": self.capacity,
+            "size": self.size,
+            "utilization": f"{(self.size/self.capacity)*100:.1f}%",
+            "memory_mb": memory_mb,
+            "device": str(self.device)
+        }

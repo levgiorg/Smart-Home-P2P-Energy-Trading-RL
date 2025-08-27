@@ -84,8 +84,8 @@ class SingleHouseDDPGAgent:
         self.hard_update(self.target_critic, self.critic)
     
     def _initialize_utilities(self):
-        """Initialize memory, normalizer, and noise."""
-        self.memory = ReplayMemory(self.memory_size)
+        """Initialize GPU-based memory, normalizer, and noise."""
+        self.memory = ReplayMemory(self.memory_size, device=self.device)
         self.normalizer = Normalizer(self.state_dim, self.device)
         # Noise for hvac_energy and battery_action only (first 2 actions)
         self.noise = OUNoise(2)

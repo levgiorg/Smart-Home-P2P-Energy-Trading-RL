@@ -3,18 +3,18 @@
         "time_step_size": 3600,
         "num_hours": 168,
         "num_time_steps": 168,
-        "device": "cpu"
+        "device": "cuda"
     },
     "rl_agent": {
-        "num_episodes": 100,
+        "num_episodes": 10000,
         "epsilon": 1,
         "epsilon_decay": 0.997,
         "learning_rate": 1e-06,
         "gamma": 0.99,
         "tau": 0.001,
         "target_update": 10,
-        "batch_size": 32,
-        "memory_size": 838320,
+        "batch_size": 8192,
+        "memory_size": 5000000,
         "momentum": 0.95,
         "epsilon_decay_rate": 0.996,
         "epsilon_min_value": 0.1,
@@ -22,19 +22,19 @@
         "learning_rate_critic": 1e-05
     },
     "actor": {
-        "fc1_dims": 400,
-        "fc2_dims": 300
+        "fc1_dims": 2048,
+        "fc2_dims": 1536
     },
     "critic": {
-        "fc1_dims": 400,
-        "fc2_dims": 300,
-        "fc3_dims": 300
+        "fc1_dims": 2048,
+        "fc2_dims": 1536,
+        "fc3_dims": 1024
     },
     "dqn_agent": {
         "learning_rate": 1e-05,
-        "fc1_dims": 400,
-        "fc2_dims": 300,
-        "fc3_dims": 300,
+        "fc1_dims": 2048,
+        "fc2_dims": 1536,
+        "fc3_dims": 1024,
         "epsilon_start": 1.0,
         "epsilon_end": 0.1,
         "epsilon_decay": 0.997,
@@ -86,8 +86,8 @@
             "markup_factor": 1.2,
             "base_margin": 0.1
         },
-        "initial_selling_price_ratio": 0.8,
-        "min_selling_price": 0.55,
+        "initial_selling_price_ratio": 0.75,
+        "min_selling_price": 0.5,
         "comfort_penalty": 4
     },
     "cost_model": {
