@@ -64,11 +64,6 @@ def run_experiments(algorithm='ddpg'):
             (2048, 1024, 512),    # Much larger network
             (1536, 768, 384)      # Wide but shallow
         ],
-        'learning_advanced': [
-            (5e-5, 5e-4, 512, 1500000, 2),    # Larger batches, more memory
-            (8e-5, 8e-4, 384, 1200000, 3),    # Faster learning
-            (3e-5, 3e-4, 768, 2000000, 1)     # Very large batches
-        ],
         'battery_advanced': [
             (2.0, 300.0, 0.98, 0.98, 0.7),    # High capacity, high efficiency
             (1.5, 250.0, 0.99, 0.99, 0.6),    # Maximum efficiency
@@ -144,28 +139,6 @@ def run_experiments(algorithm='ddpg'):
             print(f"\nRunning advanced network with {mechanism_name} ({algorithm.upper()}), architecture: {fc1}, {fc2}, {fc3}")
             main(algorithm)
 
-        for actor_lr, critic_lr, batch_size, memory_size, update_interval in experiments['learning_advanced']:
-            config = reset_config()
-            for key, value in anti_cartel_config.items():
-                config.set('anti_cartel', key, value)
-            config.set('environment', 'num_houses', 10)
-            
-            # Set learning parameters based on algorithm
-            if algorithm.lower() == 'dqn':
-                # DQN uses single learning rate
-                config.set('dqn_agent', 'learning_rate', critic_lr)  # Use critic_lr as main learning rate
-                config.set('rl_agent', 'batch_size', batch_size)
-                config.set('rl_agent', 'memory_size', memory_size)
-                config.set('dqn_agent', 'target_update_freq', update_interval * 10)  # Scale for DQN
-            else:
-                # DDPG uses separate actor/critic learning rates
-                config.set('rl_agent', 'learning_rate_actor', actor_lr)
-                config.set('rl_agent', 'learning_rate_critic', critic_lr)
-                config.set('rl_agent', 'batch_size', batch_size)
-                config.set('rl_agent', 'memory_size', memory_size)
-                config.set('rl_agent', 'update_interval', update_interval)
-            print(f"\nRunning advanced learning with {mechanism_name} ({algorithm.upper()}), lr={critic_lr}, batch_size={batch_size}")
-            main(algorithm)
 
         for cap_min, cap_max, n_c, n_d, initial_charge in experiments['battery_advanced']:
             config = reset_config()
