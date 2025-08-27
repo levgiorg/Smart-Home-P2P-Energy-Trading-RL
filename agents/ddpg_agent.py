@@ -9,240 +9,134 @@ from models_code import Actor, Critic
 from utilities import Normalizer, Transition, ReplayMemory, OUNoise
 
 
-class DDPGAgent:
+class SingleHouseDDPGAgent:
     """
-    Deep Deterministic Policy Gradient (DDPG) Agent for Smart Home Energy Management.
+    Single-house DDPG agent for independent learning.
     
-    Implements a DDPG reinforcement learning agent that can handle continuous
-    action spaces for controlling HVAC systems, battery charging/discharging,
-    and energy selling price setting in a multi-house environment.
-    
-    Features:
-    - Separate actor and critic networks with target networks
-    - Experience replay for sample efficiency
-    - Ornstein-Uhlenbeck noise process for exploration
-    - Support for multi-house environments
-    - Advanced dimension handling with validation
+    Each agent manages one house with its own actor/critic networks,
+    experience replay, and exploration noise.
     """
-
+    
     def __init__(
-        self, 
-        state_dim: int, 
+        self,
+        house_id: int,
+        state_dim: int,
         action_dim: int, 
-        action_bounds: Dict[str, List[float]], 
-        config: Config, 
-        ckpt: Optional[str] = None
+        action_bounds: Dict[str, List[float]],
+        config: Config
     ):
         """
-        Initialize the DDPG Agent.
+        Initialize single-house DDPG agent.
         
         Args:
-            state_dim: Dimension of the state space
-            action_dim: Dimension of the action space
-            action_bounds: Dictionary of action bounds for each action type
-            config: Configuration object with hyperparameters
-            ckpt: Optional path to checkpoint file for loading pretrained models
+            house_id: ID of the house this agent controls
+            state_dim: House-specific state dimension (17)
+            action_dim: House-specific action dimension (3)
+            action_bounds: Action bounds for this house
+            config: Configuration object
         """
+        self.house_id = house_id
         self.config = config
-        
-        # Get number of houses from config
-        self.num_houses = config.get('environment', 'num_houses')
-        
-        # Get dimensions from environment or config
-        self._initialize_dimensions(state_dim, action_dim)
-        
-        # Load hyperparameters
-        self._load_hyperparameters()
-
-        # Store dimensions and bounds
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.action_bounds = action_bounds
-
+        
+        # Load hyperparameters
+        self._load_hyperparameters()
+        
         # Initialize networks
         self._initialize_networks()
-
-        # Initialize memory and utilities
+        
+        # Initialize utilities  
         self._initialize_utilities()
-
-        # Load checkpoint if provided
-        if ckpt:
-            self._load_checkpoint(ckpt)
     
-    def _initialize_dimensions(self, state_dim: int, action_dim: int) -> None:
-        """
-        Initialize and validate state and action dimensions.
-        
-        Args:
-            state_dim: Provided state dimension
-            action_dim: Provided action dimension
-        """
-        # Get dimensions from config - FIXED: using self.config instead of config
-        self.base_features_per_house = self.config.get('environment', 'state_dim_per_house') - self.num_houses
-        self.features_per_house = self.config.get('environment', 'state_dim_per_house')
-        self.actions_per_house = self.config.get('environment', 'action_dim_per_house')
-        
-        # Validate dimensions
-        expected_state_dim = self.num_houses * self.features_per_house
-        expected_action_dim = self.num_houses * self.actions_per_house
-        
-        if state_dim != expected_state_dim:
-            print(f"Warning: State dimension mismatch. Got {state_dim}, expected {expected_state_dim}")
-            print(f"Using dimension from config: {expected_state_dim}")
-            self.state_dim = expected_state_dim
-        else:
-            self.state_dim = state_dim
-            
-        if action_dim != expected_action_dim:
-            print(f"Warning: Action dimension mismatch. Got {action_dim}, expected {expected_action_dim}")
-            print(f"Using dimension from config: {expected_action_dim}")
-            self.action_dim = expected_action_dim
-        else:
-            self.action_dim = action_dim
-    
-    def _load_hyperparameters(self) -> None:
+    def _load_hyperparameters(self):
         """Load agent hyperparameters from config."""
-        self.gamma = self.config.get('rl_agent', 'gamma')  # Discount factor
-        self.tau = self.config.get('rl_agent', 'tau')      # Soft update parameter
-        self.batch_size = self.config.get('rl_agent', 'batch_size')  # Batch size for training
-        self.memory_size = int(self.config.get('rl_agent', 'memory_size'))  # Replay buffer size
-        self.device = torch.device(self.config.get('general', 'device'))  # Device for computation
+        self.gamma = self.config.get('rl_agent', 'gamma')
+        self.tau = self.config.get('rl_agent', 'tau')
+        self.batch_size = self.config.get('rl_agent', 'batch_size')
+        self.memory_size = int(self.config.get('rl_agent', 'memory_size'))
+        self.device = torch.device(self.config.get('general', 'device'))
     
-    def _initialize_networks(self) -> None:
-        """Initialize actor and critic networks with their target networks."""
-        # Initialize actor network and target
+    def _initialize_networks(self):
+        """Initialize actor and critic networks with targets."""
+        # Actor networks
         self.actor = Actor(self.state_dim, self.action_dim, self.config).to(self.device)
         self.target_actor = Actor(self.state_dim, self.action_dim, self.config).to(self.device)
         
-        # Initialize critic network and target
+        # Critic networks  
         self.critic = Critic(self.state_dim, self.action_dim, self.config).to(self.device)
         self.target_critic = Critic(self.state_dim, self.action_dim, self.config).to(self.device)
-
-        # Initialize optimizers
+        
+        # Optimizers
         self.actor_optimizer = optim.Adam(
-            self.actor.parameters(), 
+            self.actor.parameters(),
             lr=self.config.get('rl_agent', 'learning_rate_actor')
         )
         self.critic_optimizer = optim.Adam(
-            self.critic.parameters(), 
+            self.critic.parameters(),
             lr=self.config.get('rl_agent', 'learning_rate_critic'),
-            weight_decay=1e-2  # L2 regularization for critic
+            weight_decay=1e-2
         )
-
-        # Initialize target networks with same weights as main networks
+        
+        # Initialize target networks
         self.hard_update(self.target_actor, self.actor)
         self.hard_update(self.target_critic, self.critic)
     
-    def _initialize_utilities(self) -> None:
-        """Initialize memory buffer, normalizer, and noise process."""
-        # Experience replay buffer
+    def _initialize_utilities(self):
+        """Initialize memory, normalizer, and noise."""
         self.memory = ReplayMemory(self.memory_size)
-        
-        # State normalizer
         self.normalizer = Normalizer(self.state_dim, self.device)
-        
-        # Exploration noise (only for hvac_energy and battery_action actions)
-        num_houses = self.action_dim // self.actions_per_house
-        self.noise = OUNoise(num_houses * 2)  # Only for hvac_energy and battery_action actions
+        # Noise for hvac_energy and battery_action only (first 2 actions)
+        self.noise = OUNoise(2)
     
-    def _load_checkpoint(self, ckpt_path: str) -> None:
-        """
-        Load model weights from checkpoint.
-        
-        Args:
-            ckpt_path: Path to the checkpoint file
-        """
-        try:
-            checkpoint = torch.load(ckpt_path, map_location=self.device)
-            self.actor.load_state_dict(checkpoint['actor_state_dict'])
-            self.critic.load_state_dict(checkpoint['critic_state_dict'])
-            self.hard_update(self.target_actor, self.actor)
-            self.hard_update(self.target_critic, self.critic)
-            print(f"Successfully loaded checkpoint from {ckpt_path}")
-        except Exception as e:
-            print(f"Error loading checkpoint: {e}")
-
     def select_action(self, state: torch.Tensor, add_noise: bool = True) -> torch.Tensor:
         """
-        Select actions for all houses based on current state.
+        Select action for this house.
         
         Args:
-            state: Current state tensor
-            add_noise: Whether to add exploration noise to actions
+            state: House-specific state tensor [17 dims]
+            add_noise: Whether to add exploration noise
             
         Returns:
-            Tensor of actions for all houses
+            Action tensor for this house [3 dims]
         """
-        self.actor.eval()  # Set actor to evaluation mode
+        self.actor.eval()
         with torch.no_grad():
-            action = self.actor(state).cpu()  # Forward pass through actor network
-        self.actor.train()  # Set actor back to training mode
+            action = self.actor(state).cpu()
+        self.actor.train()
         
-        # Ensure action has correct shape [num_houses, actions_per_house]
-        num_houses = self.action_dim // self.actions_per_house
-        action = self._reshape_action(action, num_houses)
+        # Ensure correct shape [3]
+        if action.dim() == 2:
+            action = action.squeeze(0)
             
         if add_noise:
-            # Add exploration noise to actions
-            action = self._add_exploration_noise(action, num_houses)
+            action = self._add_exploration_noise(action)
             
         return action
     
-    def _reshape_action(self, action: torch.Tensor, num_houses: int) -> torch.Tensor:
-        """
-        Reshape action tensor to correct dimensions.
-        
-        Args:
-            action: Action tensor from actor network
-            num_houses: Number of houses
-            
-        Returns:
-            Reshaped action tensor [num_houses, actions_per_house]
-        """
-        if action.dim() == 1:  # If action is [action_dim]
-            return action.view(num_houses, self.actions_per_house)
-        elif action.dim() == 2 and action.shape[0] == 1:  # If action is [1, action_dim]
-            return action.view(num_houses, self.actions_per_house)
-        return action  # Already in correct shape
-    
-    def _add_exploration_noise(self, action: torch.Tensor, num_houses: int) -> torch.Tensor:
-        """
-        Add exploration noise to actions.
-        
-        Args:
-            action: Action tensor
-            num_houses: Number of houses
-            
-        Returns:
-            Action tensor with added noise
-        """
-        # Generate noise only for hvac_energy and battery_action actions
+    def _add_exploration_noise(self, action: torch.Tensor) -> torch.Tensor:
+        """Add exploration noise to first 2 actions (hvac, battery)."""
         noise = self.noise.sample()
+        noise_tensor = torch.tensor(noise, dtype=torch.float32)
         
-        # Reshape noise to match the first two actions of each house
-        noise_reshaped = torch.tensor(noise, dtype=torch.float32).view(num_houses, 2)
+        # Add noise to hvac_energy and battery_action only
+        action[:2] += noise_tensor
         
-        # Add noise only to hvac_energy and battery_action
-        action[:, :2] += noise_reshaped
-        
-        # Ensure selling price stays within bounds [0, 1]
-        action[:, 2].clamp_(0, 1)
+        # Clamp selling price to [0, 1]
+        action[2] = torch.clamp(action[2], 0, 1)
         
         return action
-
-    def optimize_model(self) -> None:
-        """
-        Perform one step of optimization on both actor and critic networks.
-        Uses experience sampled from the replay buffer.
-        """
-        # Check if we have enough transitions to sample
+    
+    def optimize_model(self):
+        """Optimize this agent's networks."""
         if len(self.memory) < self.batch_size:
             return
             
-        # Sample a batch of transitions
+        # Sample transitions
         transitions = self.memory.sample(self.batch_size)
         batch = Transition(*zip(*transitions))
-
+        
         # Create mask for non-final states
         non_final_mask = torch.tensor(
             tuple(map(lambda s: s is not None, batch.next_state)),
@@ -250,142 +144,245 @@ class DDPGAgent:
             dtype=torch.bool
         )
         
-        # Stack tensors for batch processing
-        non_final_next_states = torch.stack(
-            [s for s in batch.next_state if s is not None]
-        ).to(self.device)
-        state_batch = torch.stack(batch.state).to(self.device)  # Shape: [batch_size, state_dim]
-        action_batch = torch.stack(batch.action).to(self.device)  # Shape: [batch_size, n_actions]
-        action_batch = action_batch.view(self.batch_size, -1)  # Flatten to [batch_size, n_actions]
-        reward_batch = torch.stack(batch.reward).to(self.device)  # Shape: [batch_size, 1]
-
-        # Update critic network
+        # Stack batch data
+        state_batch = torch.stack(batch.state).to(self.device)
+        action_batch = torch.stack(batch.action).to(self.device) 
+        reward_batch = torch.stack(batch.reward).to(self.device)
+        non_final_next_states = torch.stack([s for s in batch.next_state if s is not None]).to(self.device)
+        
+        # Update critic
         self._update_critic(state_batch, action_batch, reward_batch, non_final_mask, non_final_next_states)
         
-        # Update actor network
+        # Update actor
         self._update_actor(state_batch)
         
-        # Soft update target networks
+        # Soft update targets
         self.soft_update(self.target_actor, self.actor)
         self.soft_update(self.target_critic, self.critic)
     
-    def _update_critic(
-        self,
-        state_batch: torch.Tensor,
-        action_batch: torch.Tensor,
-        reward_batch: torch.Tensor,
-        non_final_mask: torch.Tensor,
-        non_final_next_states: torch.Tensor
-    ) -> None:
-        """
-        Update critic network using TD learning.
-        
-        Args:
-            state_batch: Batch of current states
-            action_batch: Batch of actions taken
-            reward_batch: Batch of rewards received
-            non_final_mask: Mask for non-terminal states
-            non_final_next_states: Batch of next states (excluding terminal states)
-        """
+    def _update_critic(self, state_batch, action_batch, reward_batch, non_final_mask, non_final_next_states):
+        """Update critic network."""
         with torch.no_grad():
-            # Compute next actions and Q-values for next states
+            # Compute target Q-values
             next_actions = self.target_actor(non_final_next_states)
-            next_actions = next_actions.view(next_actions.size(0), -1)  # Flatten actions
             next_q_values = self.target_critic(non_final_next_states, next_actions)
             
-            # Prepare Q-targets tensor
+            # Compute Q-targets
             q_targets = torch.zeros((self.batch_size, 1), device=self.device)
-            
-            # Set target values for non-terminal states
             q_targets[non_final_mask] = reward_batch[non_final_mask] + self.gamma * next_q_values
-
-        # Compute expected Q-values from current policy
+            
+        # Compute expected Q-values
         q_expected = self.critic(state_batch, action_batch)
-
-        # Compute critic loss (MSE)
+        
+        # Critic loss
         critic_loss = F.mse_loss(q_expected, q_targets)
         
-        # Optimize the critic
+        # Optimize critic
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
         self.critic_optimizer.step()
     
-    def _update_actor(self, state_batch: torch.Tensor) -> None:
-        """
-        Update actor network using policy gradient.
-        
-        Args:
-            state_batch: Batch of current states
-        """
-        # Get actions from current policy
+    def _update_actor(self, state_batch):
+        """Update actor network."""
         predicted_actions = self.actor(state_batch)
-        predicted_actions = predicted_actions.view(predicted_actions.size(0), -1)  # Flatten actions
-        
-        # Compute actor loss as negative of expected Q-value
         actor_loss = -self.critic(state_batch, predicted_actions).mean()
-
-        # Optimize the actor
+        
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         self.actor_optimizer.step()
-
-    def soft_update(self, target_net: torch.nn.Module, source_net: torch.nn.Module) -> None:
-        """
-        Soft update target network parameters using polyak averaging.
-        
-        θ_target = τ*θ_source + (1 - τ)*θ_target
-        
-        Args:
-            target_net: Target network to update
-            source_net: Source network
-        """
+    
+    def soft_update(self, target_net, source_net):
+        """Soft update target network."""
         for target_param, param in zip(target_net.parameters(), source_net.parameters()):
             target_param.data.copy_(self.tau * param.data + (1.0 - self.tau) * target_param.data)
-
-    def hard_update(self, target_net: torch.nn.Module, source_net: torch.nn.Module) -> None:
-        """
-        Hard update target network parameters (copy parameters).
-        
-        θ_target = θ_source
-        
-        Args:
-            target_net: Target network to update
-            source_net: Source network
-        """
+    
+    def hard_update(self, target_net, source_net):
+        """Hard update target network."""
         target_net.load_state_dict(source_net.state_dict())
 
-    def get_parameters(self) -> List[np.ndarray]:
-        """
-        Get all model parameters as NumPy arrays.
-        
-        Returns:
-            List of parameters from actor and critic networks
-        """
-        # Return a list of parameters (as NumPy arrays)
-        actor_params = [param.cpu().data.numpy() for param in self.actor.parameters()]
-        critic_params = [param.cpu().data.numpy() for param in self.critic.parameters()]
-        return actor_params + critic_params
 
-    def set_parameters(self, parameters: List[np.ndarray]) -> None:
+class DDPGAgent:
+    """
+    Multi-Agent DDPG for Smart Home Energy Management.
+    
+    Manages multiple independent DDPG agents, one per house.
+    Each agent sees house-specific state and controls house-specific actions.
+    """
+    
+    def __init__(
+        self,
+        state_dim: int,
+        action_dim: int,
+        action_bounds: Dict[str, List[float]],
+        config: Config,
+        ckpt: Optional[str] = None
+    ):
         """
-        Set model parameters from a list of NumPy arrays.
+        Initialize Multi-Agent DDPG.
         
         Args:
-            parameters: List of parameters to set in the networks
+            state_dim: Total state dimension (170 for 10 houses)
+            action_dim: Total action dimension (30 for 10 houses)  
+            action_bounds: Action bounds
+            config: Configuration object
+            ckpt: Optional checkpoint path
         """
-        # Determine parameter split between actor and critic
-        n_actor_params = len(list(self.actor.parameters()))
-        actor_params = parameters[:n_actor_params]
-        critic_params = parameters[n_actor_params:]
-
-        # Set actor parameters
-        for param, new_param in zip(self.actor.parameters(), actor_params):
-            param.data = torch.tensor(new_param, dtype=param.data.dtype).to(self.device)
+        self.config = config
+        self.num_houses = config.get('environment', 'num_houses')
+        self.state_dim_per_house = config.get('environment', 'state_dim_per_house')  # 17
+        self.action_dim_per_house = config.get('environment', 'action_dim_per_house')  # 3
+        self.device = torch.device(config.get('general', 'device'))
+        
+        # Validate dimensions
+        expected_total_state = self.num_houses * self.state_dim_per_house
+        expected_total_action = self.num_houses * self.action_dim_per_house
+        
+        if state_dim != expected_total_state:
+            print(f"Warning: Total state dim mismatch. Got {state_dim}, expected {expected_total_state}")
+        if action_dim != expected_total_action:
+            print(f"Warning: Total action dim mismatch. Got {action_dim}, expected {expected_total_action}")
+        
+        # Create independent agents for each house
+        self.agents = []
+        for house_id in range(self.num_houses):
+            agent = SingleHouseDDPGAgent(
+                house_id=house_id,
+                state_dim=self.state_dim_per_house,
+                action_dim=self.action_dim_per_house,
+                action_bounds=action_bounds,
+                config=config
+            )
+            self.agents.append(agent)
             
-        # Set critic parameters
-        for param, new_param in zip(self.critic.parameters(), critic_params):
-            param.data = torch.tensor(new_param, dtype=param.data.dtype).to(self.device)
+        print(f"Multi-Agent DDPG initialized with {self.num_houses} independent agents")
+        print(f"Each agent: state_dim={self.state_dim_per_house}, action_dim={self.action_dim_per_house}")
+        
+        # Load checkpoint if provided
+        if ckpt:
+            self._load_checkpoint(ckpt)
+    
+    def select_action(self, global_state: torch.Tensor, add_noise: bool = True) -> torch.Tensor:
+        """
+        Select actions for all houses using independent agents.
+        
+        Args:
+            global_state: Global state tensor [170 dims]
+            add_noise: Whether to add exploration noise
             
-        # Update target networks
-        self.hard_update(self.target_actor, self.actor)
-        self.hard_update(self.target_critic, self.critic)
+        Returns:
+            Actions tensor [num_houses, 3] 
+        """
+        # Extract house-specific states
+        house_states = self._extract_house_states(global_state)
+        
+        # Get actions from each agent
+        house_actions = []
+        for i, (agent, house_state) in enumerate(zip(self.agents, house_states)):
+            action = agent.select_action(house_state, add_noise)
+            house_actions.append(action)
+        
+        # Stack to create [num_houses, 3] tensor
+        return torch.stack(house_actions)
+    
+    def _extract_house_states(self, global_state: torch.Tensor) -> List[torch.Tensor]:
+        """
+        Extract house-specific states from global state.
+        
+        Args:
+            global_state: Global state [170 dims]
+            
+        Returns:
+            List of house-specific states, each [17 dims]
+        """
+        # Ensure global_state is 1D
+        if global_state.dim() > 1:
+            global_state = global_state.flatten()
+            
+        house_states = []
+        for house_id in range(self.num_houses):
+            start_idx = house_id * self.state_dim_per_house
+            end_idx = start_idx + self.state_dim_per_house
+            house_state = global_state[start_idx:end_idx]
+            house_states.append(house_state)
+            
+        return house_states
+    
+    def optimize_model(self):
+        """Optimize all agents."""
+        for agent in self.agents:
+            agent.optimize_model()
+    
+    def store_transition(self, global_state, actions, global_next_state, rewards):
+        """
+        Store transitions for all agents.
+        
+        Args:
+            global_state: Global state [170]
+            actions: Actions [num_houses, 3]
+            global_next_state: Next global state [170] 
+            rewards: Rewards for each house [num_houses]
+        """
+        # Extract house-specific states
+        house_states = self._extract_house_states(global_state)
+        house_next_states = self._extract_house_states(global_next_state)
+        
+        # Store transition for each agent
+        for i, agent in enumerate(self.agents):
+            house_reward = torch.tensor([rewards[i]], dtype=torch.float32, device=self.device)
+            
+            agent.memory.push(
+                house_states[i],
+                actions[i] if actions.dim() > 1 else actions,
+                house_next_states[i],
+                house_reward
+            )
+    
+    @property
+    def memory(self):
+        """For compatibility - returns first agent's memory."""
+        return self.agents[0].memory
+    
+    def _load_checkpoint(self, ckpt_path: str):
+        """Load checkpoint for all agents."""
+        try:
+            checkpoint = torch.load(ckpt_path, map_location=self.device)
+            for i, agent in enumerate(self.agents):
+                agent.actor.load_state_dict(checkpoint[f'agent_{i}_actor_state_dict'])
+                agent.critic.load_state_dict(checkpoint[f'agent_{i}_critic_state_dict'])
+                agent.hard_update(agent.target_actor, agent.actor)
+                agent.hard_update(agent.target_critic, agent.critic)
+            print(f"Successfully loaded multi-agent checkpoint from {ckpt_path}")
+        except Exception as e:
+            print(f"Error loading checkpoint: {e}")
+    
+    def save_checkpoint(self, path: str, episode: int, episode_reward: float):
+        """Save checkpoint for all agents."""
+        checkpoint = {
+            'episode': episode,
+            'episode_reward': episode_reward,
+            'num_houses': self.num_houses,
+        }
+        
+        # Save each agent's state
+        for i, agent in enumerate(self.agents):
+            checkpoint[f'agent_{i}_actor_state_dict'] = agent.actor.state_dict()
+            checkpoint[f'agent_{i}_critic_state_dict'] = agent.critic.state_dict()
+            checkpoint[f'agent_{i}_actor_optimizer_state_dict'] = agent.actor_optimizer.state_dict()
+            checkpoint[f'agent_{i}_critic_optimizer_state_dict'] = agent.critic_optimizer.state_dict()
+        
+        torch.save(checkpoint, path)
+    
+    def get_parameters(self) -> List[np.ndarray]:
+        """Get parameters from all agents (for compatibility)."""
+        all_params = []
+        for agent in self.agents:
+            agent_params = [param.cpu().data.numpy() for param in agent.actor.parameters()]
+            agent_params += [param.cpu().data.numpy() for param in agent.critic.parameters()]
+            all_params.extend(agent_params)
+        return all_params
+    
+    def set_parameters(self, parameters: List[np.ndarray]):
+        """Set parameters for all agents (for compatibility)."""
+        # This is complex for multi-agent - simplified implementation
+        print("Warning: set_parameters not fully implemented for multi-agent DDPG")
+        pass

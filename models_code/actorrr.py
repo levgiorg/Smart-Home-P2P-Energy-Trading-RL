@@ -6,41 +6,32 @@ from hyperparameters import Config
 
 class Actor(nn.Module):
     """
-    Actor network for DDPG agent with dynamic sizing based on number of houses.
+    Actor network for single-house DDPG agent.
     
-    The network automatically adjusts its input and output dimensions based on:
-    - Number of houses from config
-    - Base state features per house (dynamic based on state components)
-    - Actions per house (3: hvac_energy, battery_action, selling_price)
+    Each actor network handles one house with:
+    - Input: House-specific state (own features + all houses' selling prices) [17 dims]
+    - Output: House-specific actions (hvac_energy, battery_action, selling_price) [3 dims]
     """
     def __init__(self, input_dims, n_actions, config: Config):
         super(Actor, self).__init__()
-        # Get number of houses from config
-        self.num_houses = config.get('environment', 'num_houses')
         
-        # Get dimensions dynamically from config, which are calculated in Environment
-        self.base_features_per_house = config.get('environment', 'state_dim_per_house') - self.num_houses
-        self.features_per_house = config.get('environment', 'state_dim_per_house')
-        self.actions_per_house = config.get('environment', 'action_dim_per_house')
+        # For multi-agent DDPG, each actor handles one house
+        self.state_dim_per_house = config.get('environment', 'state_dim_per_house')  # 17
+        self.actions_per_house = config.get('environment', 'action_dim_per_house')   # 3
         
-        # Verify input dimensions match expected
-        expected_input_dims = self.features_per_house * self.num_houses
-        expected_n_actions = self.actions_per_house * self.num_houses
-        
-        if input_dims != expected_input_dims:
-            print(f"Warning: Input dimensions mismatch in Actor. Got {input_dims}, expected {expected_input_dims}")
-            print(f"Using dimension from config: {expected_input_dims}")
-            input_dims = expected_input_dims
+        # Verify dimensions for single-house agent
+        if input_dims != self.state_dim_per_house:
+            print(f"Warning: Input dimensions mismatch in single-house Actor. Got {input_dims}, expected {self.state_dim_per_house}")
+            input_dims = self.state_dim_per_house
             
-        if n_actions != expected_n_actions:
-            print(f"Warning: Action dimensions mismatch in Actor. Got {n_actions}, expected {expected_n_actions}")
-            print(f"Using dimension from config: {expected_n_actions}")
-            n_actions = expected_n_actions
+        if n_actions != self.actions_per_house:
+            print(f"Warning: Action dimensions mismatch in single-house Actor. Got {n_actions}, expected {self.actions_per_house}")
+            n_actions = self.actions_per_house
         
-        self.input_dims = input_dims
+        self.input_dims = input_dims  # 17 for single house
         self.fc1_dims = config.get('actor', 'fc1_dims')
         self.fc2_dims = config.get('actor', 'fc2_dims')
-        self.n_actions = n_actions
+        self.n_actions = n_actions    # 3 for single house
         device = config.get('general', 'device')
         self.device = torch.device(device)
 

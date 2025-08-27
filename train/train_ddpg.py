@@ -12,13 +12,12 @@ from bookkeeper import BookKeeper
 
 def train_ddpg(config_path='hyperparameters.json', model_name='ddpg_', enable_saving=False):
     """
-    Train a DDPG agent in a decentralized setting (one agent per house).
+    Train Multi-Agent DDPG with independent agents per house.
     
     Args:
         config_path (str): Path to hyperparameters config file
         model_name (str): Prefix for saved model files
         enable_saving (bool): Whether to save model checkpoints during training
-        save_interval (int): Number of episodes between saves (only used if enable_saving is True)
     """
     # 1. Load configuration
     config = Config()
@@ -83,29 +82,23 @@ def train_ddpg(config_path='hyperparameters.json', model_name='ddpg_', enable_sa
         print(f"Episode {episode + 1}/{num_episodes}")
 
         while not done:
-            # Convert current state to tensor
-            state_tensor = torch.FloatTensor(state).unsqueeze(0).to(device)
+            # Convert current state to tensor (global state)
+            state_tensor = torch.FloatTensor(state).to(device)  # [170]
             
-            # Select an action
-            action = agent.select_action(state_tensor)
+            # Select actions from all independent agents
+            actions = agent.select_action(state_tensor)  # [num_houses, 3]
             
             # Environment step
-            next_state, reward, done, info = env.step(action.squeeze(0))
+            next_state, reward, done, info = env.step(actions)
             
-            # Sum of rewards (scalar) stored in replay buffer
+            # Store transitions for all agents using new multi-agent method
+            next_state_tensor = torch.FloatTensor(next_state).to(device)  # [170]
+            agent.store_transition(state_tensor, actions, next_state_tensor, reward)
+            
+            # Sum of rewards for episode tracking
             total_reward = sum(reward)
-            reward_tensor = torch.FloatTensor([total_reward]).to(device)
-
-            # Store transition
-            next_state_tensor = torch.FloatTensor(next_state).unsqueeze(0).to(device)
-            agent.memory.push(
-                state_tensor.squeeze(0),
-                action.squeeze(0),
-                next_state_tensor.squeeze(0),
-                reward_tensor
-            )
             
-            # Optimize agent
+            # Optimize all agents
             agent.optimize_model()
             
             # Update accumulators
@@ -142,41 +135,16 @@ def train_ddpg(config_path='hyperparameters.json', model_name='ddpg_', enable_sa
             grid_prices=info['grid_prices']
         )
 
-        # Save model checkpoint if enabled
+        # Save model checkpoint if enabled (now saves all agents)
         if enable_saving and (episode + 1) % save_interval == 0:
             model_path = os.path.join(models_dir, f'model_checkpoint_{episode + 1}.pt')
-            torch.save({
-                'episode': episode + 1,
-                'actor_state_dict': agent.actor.state_dict(),
-                'critic_state_dict': agent.critic.state_dict(),
-                'actor_optimizer_state_dict': agent.actor_optimizer.state_dict(),
-                'critic_optimizer_state_dict': agent.critic_optimizer.state_dict(),
-                'episode_reward': episode_reward,
-                'trading_metrics': {
-                    'trading_profit': trading_profit_per_house.tolist(),
-                    'energy_bought_p2p': energy_bought_p2p_per_house.tolist(),
-                    'selling_prices': selling_prices_per_house.tolist()  
-                }
-            }, model_path)
-            
+            agent.save_checkpoint(model_path, episode + 1, episode_reward)
             bookkeeper.save_metrics()
 
     # Save final model (always save the final model regardless of enable_saving)
-    print("Training complete. Saving final model ...")
+    print("Training complete. Saving final multi-agent model ...")
     final_model_path = os.path.join(bookkeeper.run_dir, f'model_final.pt')
-    torch.save({
-        'episode': num_episodes,
-        'actor_state_dict': agent.actor.state_dict(),
-        'critic_state_dict': agent.critic.state_dict(),
-        'actor_optimizer_state_dict': agent.actor_optimizer.state_dict(),
-        'critic_optimizer_state_dict': agent.critic_optimizer.state_dict(),
-        'episode_reward': episode_reward,
-        'trading_metrics': {
-            'trading_profit': trading_profit_per_house.tolist(),
-            'energy_bought_p2p': energy_bought_p2p_per_house.tolist(),
-            'selling_prices': selling_prices_per_house.tolist()  
-        }
-    }, final_model_path)
+    agent.save_checkpoint(final_model_path, num_episodes, episode_reward)
 
     # Save final metrics and plots
     bookkeeper.save_metrics()
