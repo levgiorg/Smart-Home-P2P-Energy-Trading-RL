@@ -13,8 +13,8 @@
         "gamma": 0.99,
         "tau": 0.001,
         "target_update": 10,
-        "batch_size": 8192,
-        "memory_size": 5000000,
+        "batch_size": 16384,
+        "memory_size": 12000000,
         "momentum": 0.95,
         "epsilon_decay_rate": 0.996,
         "epsilon_min_value": 0.1,
@@ -22,19 +22,19 @@
         "learning_rate_critic": 1e-05
     },
     "actor": {
-        "fc1_dims": 2048,
-        "fc2_dims": 1536
+        "fc1_dims": 4096,
+        "fc2_dims": 3072
     },
     "critic": {
-        "fc1_dims": 2048,
-        "fc2_dims": 1536,
-        "fc3_dims": 1024
+        "fc1_dims": 4096,
+        "fc2_dims": 3072,
+        "fc3_dims": 2048
     },
     "dqn_agent": {
         "learning_rate": 1e-05,
-        "fc1_dims": 2048,
-        "fc2_dims": 1536,
-        "fc3_dims": 1024,
+        "fc1_dims": 4096,
+        "fc2_dims": 3072,
+        "fc3_dims": 2048,
         "epsilon_start": 1.0,
         "epsilon_end": 0.1,
         "epsilon_decay": 0.997,
