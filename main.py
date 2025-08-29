@@ -182,7 +182,7 @@ def run_experiments(algorithm='ddpg'):
     print("\nOriginal configuration has been restored.")
 
 def main(algorithm='ddpg'):
-    """
+    """ 
     Main training function that supports both DDPG and DQN algorithms.
     
     Args:
