@@ -22,3 +22,4 @@ dqn_runs/*
 runs/*
 *.yaml
 p2p_venv
+dummy_folder/

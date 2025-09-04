@@ -96,7 +96,8 @@ class DQNTrainer:
         print(f"DQN Trainer initialized:")
         print(f"  - Run name: {self.run_name}")
         print(f"  - State dimension: {self.state_dim}")
-        print(f"  - Discrete actions: {self.agent.num_actions}")
+        print(f"  - Houses: {self.agent.num_houses}")
+        print(f"  - Discrete actions per house: {self.agent.agents[0].num_actions}")
         print(f"  - Training episodes: {self.num_episodes}")
         print(f"  - Random seed: {self.random_seed}")
         print(f"  - Output directory: {self.output_dir}")
@@ -191,7 +192,7 @@ class DQNTrainer:
                     'q_network_state_dict': self.agent.q_network.state_dict(),
                     'target_network_state_dict': self.agent.target_network.state_dict(),
                     'optimizer_state_dict': self.agent.optimizer.state_dict(),
-                    'epsilon': self.agent.epsilon,
+                    'epsilon': np.mean([agent.epsilon for agent in self.agent.agents]),
                     'memory_size': len(self.agent.memory),
                     'learn_step_counter': self.agent.learn_step_counter,
                     'config': self.config.to_dict() if hasattr(self.config, 'to_dict') else str(self.config)
@@ -215,21 +216,8 @@ class DQNTrainer:
         
         # Save final model (matching DDPG pattern exactly)
         final_model_path = f"{self.output_dir}/model_final.pt"  # Match DDPG naming
-        torch.save({
-            'episode': self.num_episodes,
-            'q_network_state_dict': self.agent.q_network.state_dict(), 
-            'target_network_state_dict': self.agent.target_network.state_dict(),
-            'optimizer_state_dict': self.agent.optimizer.state_dict(),
-            'epsilon': self.agent.epsilon,
-            'memory_size': len(self.agent.memory),
-            'learn_step_counter': self.agent.learn_step_counter,
-            'final_eval_score': final_eval_score,
-            'best_eval_score': best_eval_score,
-            'best_episode': best_episode,
-            'training_time': training_time,
-            'config': self.config.to_dict() if hasattr(self.config, 'to_dict') else str(self.config)
-        }, final_model_path)
-        print(f"Saved final model: {final_model_path}")
+        self.agent.save_checkpoint(final_model_path)
+        print(f"Saved final multi-agent model: {final_model_path}")
         
         # Save final metrics and generate plots (matching DDPG pattern)
         self.bookkeeper.save_metrics()
@@ -262,50 +250,45 @@ class DQNTrainer:
         
         done = False
         while not done:
-            # Select actions for each house (FIXED: use full state, house-specific actions)
-            house_discrete_actions = []
-            for house_idx in range(env.num_houses):
-                # Use full state but make house-specific decisions
-                if training:
-                    house_action = self.agent.select_action(state, evaluation=False)
-                else:
-                    house_action = self.agent.select_action(state, evaluation=True)
-                    
-                house_discrete_actions.append(house_action)
+            # Multi-agent action selection - get actions for all houses simultaneously
+            if training:
+                house_discrete_actions = self.agent.select_action(state, evaluation=False)
+            else:
+                house_discrete_actions = self.agent.select_action(state, evaluation=True)
             
-            discrete_actions_taken.append(house_discrete_actions)  # Store all house actions
-            house_actions = house_discrete_actions
+            discrete_actions_taken.append(house_discrete_actions)
             
             # Take step
-            next_state, reward, done, info = env.step(house_actions)
+            next_state, reward, done, info = env.step(house_discrete_actions)
             
-            # Store experience for training (multi-house with full state)
+            # Store experience for training - multi-agent approach
             if training:
-                # Store one transition per house action using full state
-                for house_idx, house_action in enumerate(house_discrete_actions):
-                    # Use individual house reward if available, otherwise distribute total reward
-                    if hasattr(reward, '__len__') and len(reward) == env.num_houses:
-                        house_reward = reward[house_idx]
-                    else:
-                        house_reward = reward / env.num_houses
-                    
-                    self.agent.store_transition(state, house_action, house_reward, next_state, done)
+                # Handle rewards - distribute if single value, use directly if per-house
+                if hasattr(reward, '__len__') and len(reward) == env.num_houses:
+                    house_rewards = reward
+                else:
+                    house_rewards = [reward / env.num_houses] * env.num_houses
+                
+                # Store transitions for all houses simultaneously
+                self.agent.store_transition(state, house_discrete_actions, next_state, house_rewards, done)
             
             # Update for next iteration
             state = next_state
             episode_reward += reward
             episode_length += 1
         
-        # Compute action entropy for analysis (multi-house)
+        # Compute action entropy for analysis (multi-agent)
         # Flatten all house actions across all steps
         all_actions_flat = []
         for step_actions in discrete_actions_taken:
             if isinstance(step_actions, list):
-                all_actions_flat.extend(step_actions) 
+                all_actions_flat.extend(step_actions)
             else:
                 all_actions_flat.append(step_actions)
         
-        action_counts = np.bincount(all_actions_flat, minlength=self.agent.num_actions)
+        # Use the discrete actions from the first agent (all have same action space size)
+        num_actions = self.agent.agents[0].num_actions
+        action_counts = np.bincount(all_actions_flat, minlength=num_actions)
         action_probs = action_counts / max(len(all_actions_flat), 1)
         action_entropy = -np.sum(action_probs * np.log(action_probs + 1e-8))
         
@@ -331,8 +314,8 @@ class DQNTrainer:
         if loss is not None:
             return {
                 'loss': loss,
-                'epsilon': self.agent.epsilon,
-                'learn_steps': self.agent.learn_step_counter
+                'epsilon': np.mean([agent.epsilon for agent in self.agent.agents]),
+                'learn_steps': self.agent.global_learn_steps
             }
         
         return None
@@ -393,7 +376,7 @@ class DQNTrainer:
             selling_prices=selling_prices,
             grid_prices=grid_prices,
             # DQN-specific metrics
-            epsilon=self.agent.epsilon,
+            epsilon=np.mean([agent.epsilon for agent in self.agent.agents]),
             action_entropy=episode_metrics['action_entropy']
         )
 
@@ -428,9 +411,9 @@ class DQNTrainer:
         print(f"Episode {episode:4d} | "
               f"Reward: {episode_metrics['episode_reward']:8.2f} | "
               f"Length: {episode_metrics['episode_length']:4d} | "
-              f"ε: {agent_stats['epsilon']:.3f} | "
+              f"ε: {agent_stats['avg_epsilon']:.3f} | "
               f"Loss: {agent_stats['avg_loss']:.4f} | "
-              f"Memory: {agent_stats['memory_size']:6d}")
+              f"Memory: {agent_stats['total_memory_size']:6d}")
     
     def _save_checkpoint(self, episode: int) -> None:
         """Save model checkpoint (maintained for compatibility)."""
@@ -438,18 +421,10 @@ class DQNTrainer:
         pass
     
     def _save_best_model(self) -> None:
-        """Save best performing model (matching DDPG pattern)."""
+        """Save best performing multi-agent model."""
         best_model_path = f"{self.output_dir}/models/dqn__best.pth"
-        torch.save({
-            'q_network_state_dict': self.agent.q_network.state_dict(),
-            'target_network_state_dict': self.agent.target_network.state_dict(),
-            'optimizer_state_dict': self.agent.optimizer.state_dict(),
-            'epsilon': self.agent.epsilon,
-            'memory_size': len(self.agent.memory),
-            'learn_step_counter': self.agent.learn_step_counter,
-            'config': self.config.to_dict() if hasattr(self.config, 'to_dict') else str(self.config)
-        }, best_model_path)
-        print(f"Saved best model: {best_model_path}")
+        self.agent.save_checkpoint(best_model_path)
+        print(f"Saved best multi-agent model: {best_model_path}")
     
     def _compile_results(self, training_time: float, final_score: float, 
                         best_score: float, best_episode: int) -> Dict[str, Any]:
@@ -465,7 +440,7 @@ class DQNTrainer:
                 'training_time': training_time,
                 'total_episodes': self.num_episodes,
                 'random_seed': self.random_seed,
-                'final_epsilon': self.agent.epsilon
+                'final_epsilon': np.mean([agent.epsilon for agent in self.agent.agents])
             },
             'performance': {
                 'final_evaluation_score': final_score,
@@ -473,7 +448,7 @@ class DQNTrainer:
                 'best_episode': best_episode
             },
             'learning_metrics': {
-                'total_learning_steps': self.agent.learn_step_counter,
+                'total_learning_steps': agent_stats['total_learn_steps'],
                 'final_loss': agent_stats['avg_loss'],
                 'average_q_value': agent_stats['avg_q_value']
             },
