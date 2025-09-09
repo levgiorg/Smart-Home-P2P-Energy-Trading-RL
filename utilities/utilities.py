@@ -1,11 +1,12 @@
 import torch
 import numbers
+from typing import Union, Any
 
 from hyperparameters import Config
 
 
 class Utilities:
-    def __init__(self, num_houses, centralized=False):
+    def __init__(self, num_houses: int, centralized: bool = False) -> None:
         """
         Initialize utilities helper class for action handling.
         
@@ -24,7 +25,7 @@ class Utilities:
         self.num_houses = num_houses
         self.centralized = centralized
 
-    def unscaler(self, actions):
+    def unscaler(self, actions: torch.Tensor) -> torch.Tensor:
         """
         Unscales actions from normalized [-1,1] range to actual physical values.
 

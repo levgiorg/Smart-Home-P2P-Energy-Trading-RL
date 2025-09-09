@@ -1,10 +1,11 @@
 import matplotlib.pyplot as plt
+from typing import Optional
 
 from enhanced_analyzer import EnhancedRunAnalyzer
 from cartel_analyzer import AntiCartelAnalyzer
 
 
-def Enhanced_main():
+def Enhanced_main() -> None:
     analyzer = EnhancedRunAnalyzer("ml-outputs2")
     
     # Plot detailed comparison of top runs
@@ -18,7 +19,7 @@ def Enhanced_main():
     
     plt.show()
 
-def Cartel_main():
+def Cartel_main() -> None:
     # Initialize analyzer with your output directory
     analyzer = AntiCartelAnalyzer("ml-outputs2")
     

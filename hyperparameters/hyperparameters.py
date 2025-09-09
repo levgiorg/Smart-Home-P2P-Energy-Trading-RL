@@ -1,11 +1,12 @@
 import os
 import json
+from typing import Any, Dict, Optional
 
 class Config:
     config = None  # Class variable to store configuration
     config_file_path = None  # Class variable to store the path to the config file
 
-    def __init__(self, config_file='hyperparameters.json'):
+    def __init__(self, config_file: str = 'hyperparameters.json') -> None:
         if Config.config is None:
             # Determine the absolute path to the config file
             Config.config_file_path = os.path.join(os.path.dirname(__file__), config_file)
@@ -19,15 +20,15 @@ class Config:
                 Config.config = json.load(f)
         # No need to set self.config; use Config.config directly
 
-    def get(self, section, key):
+    def get(self, section: str, key: str) -> Any:
         """Retrieve a specific value from the configuration."""
         return Config.config.get(section, {}).get(key)
         
-    def get_section(self, section):
+    def get_section(self, section: str) -> Dict[str, Any]:
         """Retrieve an entire section from the configuration."""
         return Config.config.get(section, {})
         
-    def set(self, section, option, value):
+    def set(self, section: str, option: str, value: Any) -> None:
         """
         Set a configuration option and save the updated configuration back to the JSON file.
         

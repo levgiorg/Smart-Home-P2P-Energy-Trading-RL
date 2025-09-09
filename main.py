@@ -8,7 +8,7 @@ from hyperparameters import Config
 from train import train_ddpg
 from train.train_dqn import main as train_dqn
 
-def run_experiments(algorithm='ddpg'):
+def run_experiments(algorithm: str = 'ddpg') -> None:
     """
     Run experiments with specified algorithm.
     
@@ -18,7 +18,8 @@ def run_experiments(algorithm='ddpg'):
     config = Config()
     original_config = json.loads(json.dumps(Config.config))
 
-    def reset_config():
+    def reset_config() -> Config:
+        """Reset configuration to default state."""
         return Config()
 
     anti_cartel_configs = [

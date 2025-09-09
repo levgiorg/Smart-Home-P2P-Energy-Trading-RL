@@ -1,4 +1,5 @@
 import os
+import logging
 
 import torch
 import numpy as np
@@ -10,7 +11,7 @@ from utilities import Utilities
 from bookkeeper import BookKeeper
 
 
-def train_ddpg(config_path='hyperparameters.json', model_name='ddpg_', enable_saving=False):
+def train_ddpg(config_path: str = 'hyperparameters.json', model_name: str = 'ddpg_', enable_saving: bool = False) -> None:
     """
     Train Multi-Agent DDPG with independent agents per house.
     
@@ -79,7 +80,8 @@ def train_ddpg(config_path='hyperparameters.json', model_name='ddpg_', enable_sa
         energy_bought_p2p_per_house.fill(0)
         selling_prices_per_house.fill(0)  
 
-        print(f"Episode {episode + 1}/{num_episodes}")
+        if (episode + 1) % 50 == 0 or episode == 0:
+            print(f"Episode {episode + 1}/{num_episodes}")
 
         while not done:
             # Convert current state to tensor (global state)

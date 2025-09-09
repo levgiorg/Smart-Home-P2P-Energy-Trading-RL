@@ -6,7 +6,7 @@ class Normalizer:
     Normalizes the input data by computing an online variance and mean.
     """
 
-    def __init__(self, num_inputs: int, device: torch.device):
+    def __init__(self, num_inputs: int, device: torch.device) -> None:
         self.device = device
         self.n = torch.zeros(num_inputs).to(device)
         self.mean = torch.zeros(num_inputs).to(device)

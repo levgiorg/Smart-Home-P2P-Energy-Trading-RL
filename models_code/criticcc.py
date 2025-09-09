@@ -14,7 +14,7 @@ class Critic(nn.Module):
     - Action input: House-specific actions (hvac_energy, battery_action, selling_price) [3 dims]
     - Output: Q-value for this house [1 dim]
     """
-    def __init__(self, input_dims, n_actions, config: Config):
+    def __init__(self, input_dims: int, n_actions: int, config: Config) -> None:
         super(Critic, self).__init__()
         
         # For multi-agent DDPG, each critic handles one house

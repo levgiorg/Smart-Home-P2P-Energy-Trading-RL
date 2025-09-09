@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from typing import Optional
 
 from hyperparameters import Config
 
@@ -12,7 +13,7 @@ class Actor(nn.Module):
     - Input: House-specific state (own features + all houses' selling prices) [17 dims]
     - Output: House-specific actions (hvac_energy, battery_action, selling_price) [3 dims]
     """
-    def __init__(self, input_dims, n_actions, config: Config):
+    def __init__(self, input_dims: int, n_actions: int, config: Config) -> None:
         super(Actor, self).__init__()
         
         # For multi-agent DDPG, each actor handles one house
