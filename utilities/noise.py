@@ -12,7 +12,7 @@ class OUNoise:
         state (np.ndarray): Current state of the process.
     """
 
-    def __init__(self, size: int, mu: float = 0.0, theta: float = 0.15, sigma: float = 0.2):
+    def __init__(self, size: int, mu: float = 0.0, theta: float = 0.15, sigma: float = 0.2) -> None:
         self.size = size
         self.mu = mu
         self.theta = theta
@@ -20,7 +20,7 @@ class OUNoise:
         self.state = np.ones(self.size) * self.mu
         self.reset()
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset the internal state to mean (mu)."""
         self.state = np.ones(self.size) * self.mu
 

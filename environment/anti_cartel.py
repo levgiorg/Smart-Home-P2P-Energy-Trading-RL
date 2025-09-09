@@ -1,3 +1,4 @@
+import logging
 from collections import deque
 from typing import Dict, List, Optional, Union, Any
 
@@ -22,7 +23,7 @@ class AntiCartelMechanism:
     3. Null (Disabled): No anti-cartel mechanism is active.
     """
     
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the anti-cartel mechanism based on configuration."""
         self.config = Config()
         
@@ -40,9 +41,9 @@ class AntiCartelMechanism:
                 self._initialize_ceiling_mechanism()
             
             # Log initialization
-            print(f"Anti-cartel mechanism initialized with type: {self.mechanism_type}")
+            logging.info(f"Anti-cartel mechanism initialized with type: {self.mechanism_type}")
         else:
-            print("Anti-cartel mechanism disabled - operating in free market mode")
+            logging.info("Anti-cartel mechanism disabled - operating in free market mode")
     
     def _initialize_detection_mechanism(self) -> None:
         """Initialize parameters for the price pattern detection mechanism."""

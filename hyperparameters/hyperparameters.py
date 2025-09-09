@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 from typing import Any, Dict, Optional
 
 class Config:
@@ -47,7 +48,7 @@ class Config:
         try:
             with open(Config.config_file_path, 'w') as f:
                 json.dump(Config.config, f, indent=4)
-            print(f"Configuration updated successfully: [{section}] {option} = {value}")
+            logging.info(f"Configuration updated successfully: [{section}] {option} = {value}")
         except IOError as e:
-            print(f"Failed to write to configuration file: {e}")
+            logging.error(f"Failed to write to configuration file: {e}")
 

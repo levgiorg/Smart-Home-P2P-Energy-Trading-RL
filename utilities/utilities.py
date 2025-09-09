@@ -36,7 +36,16 @@ class Utilities:
                 
         Returns:
             Unscaled actions with physical values.
+            
+        Raises:
+            ValueError: If actions tensor has invalid shape or contains invalid values
+            TypeError: If actions is not a torch.Tensor
         """
+        if not isinstance(actions, torch.Tensor):
+            raise TypeError(f"Expected torch.Tensor, got {type(actions)}")
+            
+        if torch.isnan(actions).any() or torch.isinf(actions).any():
+            raise ValueError("Actions tensor contains NaN or Inf values")
         if self.centralized:
             # Centralized mode logic remains unchanged
             if isinstance(actions, numbers.Number) or actions.numel() == 1:

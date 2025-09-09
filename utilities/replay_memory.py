@@ -1,4 +1,5 @@
 import random
+import logging
 import torch
 import numpy as np
 from typing import Optional
@@ -14,7 +15,7 @@ class ReplayMemory:
     and maximize A100 GPU memory usage for faster training.
     """
 
-    def __init__(self, capacity: int, device: Optional[torch.device] = None):
+    def __init__(self, capacity: int, device: Optional[torch.device] = None) -> None:
         """
         Initialize GPU-based replay memory.
         
@@ -35,7 +36,7 @@ class ReplayMemory:
         self.rewards = None
         self.is_initialized = False
         
-    def _initialize_buffers(self, state_dim: int, action_dim: int):
+    def _initialize_buffers(self, state_dim: int, action_dim: int) -> None:
         """
         Initialize GPU tensor buffers based on first transition dimensions.
         
@@ -43,8 +44,8 @@ class ReplayMemory:
             state_dim: Dimension of state tensors
             action_dim: Dimension of action tensors
         """
-        print(f"Initializing GPU replay buffer: {self.capacity} transitions on {self.device}")
-        print(f"Buffer dimensions: state={state_dim}, action={action_dim}")
+        logging.info(f"Initializing GPU replay buffer: {self.capacity} transitions on {self.device}")
+        logging.info(f"Buffer dimensions: state={state_dim}, action={action_dim}")
         
         # Pre-allocate all memory on GPU for maximum efficiency
         self.states = torch.zeros((self.capacity, state_dim), dtype=torch.float32, device=self.device)
@@ -57,7 +58,7 @@ class ReplayMemory:
         # Calculate memory usage for reporting
         total_elements = self.capacity * (2 * state_dim + action_dim + 1)
         memory_mb = (total_elements * 4) / (1024 * 1024)  # 4 bytes per float32
-        print(f"GPU replay buffer allocated: {memory_mb:.1f}MB on {self.device}")
+        logging.info(f"GPU replay buffer allocated: {memory_mb:.1f}MB on {self.device}")
 
     def push(self, *args) -> None:
         """
@@ -93,7 +94,7 @@ class ReplayMemory:
         self.position = (self.position + 1) % self.capacity
         self.size = min(self.size + 1, self.capacity)
 
-    def sample(self, batch_size: int):
+    def sample(self, batch_size: int) -> list:
         """
         Sample batch directly from GPU memory - zero CPU→GPU transfer cost.
         

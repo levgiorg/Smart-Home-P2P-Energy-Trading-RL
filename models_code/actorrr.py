@@ -1,7 +1,7 @@
+import logging
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Optional
 
 from hyperparameters import Config
 
@@ -22,11 +22,11 @@ class Actor(nn.Module):
         
         # Verify dimensions for single-house agent
         if input_dims != self.state_dim_per_house:
-            print(f"Warning: Input dimensions mismatch in single-house Actor. Got {input_dims}, expected {self.state_dim_per_house}")
+            logging.warning(f"Input dimensions mismatch in single-house Actor. Got {input_dims}, expected {self.state_dim_per_house}")
             input_dims = self.state_dim_per_house
             
         if n_actions != self.actions_per_house:
-            print(f"Warning: Action dimensions mismatch in single-house Actor. Got {n_actions}, expected {self.actions_per_house}")
+            logging.warning(f"Action dimensions mismatch in single-house Actor. Got {n_actions}, expected {self.actions_per_house}")
             n_actions = self.actions_per_house
         
         self.input_dims = input_dims  # 17 for single house
