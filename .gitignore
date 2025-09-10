@@ -9,7 +9,6 @@ ml-outputs3/
 models/
 .dockerignore
 Dockerfile
-energy_analysis/
 __pycache__/
 .github/
 *.html
@@ -22,4 +21,6 @@ dqn_runs/*
 runs/*
 *.yaml
 p2p_venv
-dummy_folder/
+old_ddpg_runs/
+ddpg_runs/
+dqn_runs/
