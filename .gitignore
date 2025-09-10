@@ -24,3 +24,4 @@ p2p_venv
 old_ddpg_runs/
 ddpg_runs/
 dqn_runs/
+energy_analysis/ieee_*

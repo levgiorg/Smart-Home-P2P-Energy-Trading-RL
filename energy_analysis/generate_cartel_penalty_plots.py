@@ -14,7 +14,8 @@ import matplotlib.pyplot as plt
 from energy_analysis.config import configure_matplotlib
 from energy_analysis.utils import classify_runs_by_mechanism
 from energy_analysis.data_processor import load_data
-from energy_analysis.visualizations.cartel_penalty_visualization import (
+# DEPRECATED: Cartel penalty visualization functions have been moved to deprecated_visualizations.py
+from energy_analysis.deprecated_visualizations import (
     plot_penalty_components_stacked_area,
     plot_penalty_components_waterfall
 )
