@@ -206,7 +206,7 @@ def plot_algorithm_rewards_comparison(ddpg_rewards, dqn_rewards):
             
             # Plot the curve
             color = ALGORITHM_COLORS[algorithm]
-            label = f"{ALGORITHM_NAMES[algorithm]} (avg of {len(rewards_list)} runs)"
+            label = f"{ALGORITHM_NAMES[algorithm]}"
             
             ax.plot(episodes, smoothed_rewards, color=color, linewidth=2.5, 
                    label=label, alpha=0.9)
