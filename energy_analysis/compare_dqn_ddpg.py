@@ -31,7 +31,7 @@ MAX_EPISODES = 7000
 
 # Algorithm folder paths
 DQN_RUNS_DIR = "dqn_runs"
-DDPG_RUNS_DIR = "old_ddpg_runs"
+DDPG_RUNS_DIR = "runs"
 
 # Custom colors as requested
 ALGORITHM_COLORS = {

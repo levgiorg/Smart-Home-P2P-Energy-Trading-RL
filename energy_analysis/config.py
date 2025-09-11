@@ -6,7 +6,7 @@ import os
 import matplotlib as mpl
 
 # Directory configuration
-ML_OUTPUT_DIR = "old_ddpg_runs"
+ML_OUTPUT_DIR = "runs"
 PLOTS_OUTPUT_DIR = "energy_analysis/ieee_plots"
 
 # Create output directory if it doesn't exist
