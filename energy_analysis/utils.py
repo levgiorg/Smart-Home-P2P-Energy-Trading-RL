@@ -1,8 +1,9 @@
 """
-Utility functions for energy mechanism analysis.
+Utility functions for energy mechanism analysis and algorithm comparison.
 """
 import numpy as np
 import os
+import pickle
 
 
 def moving_average(data, window_size=100):
@@ -99,3 +100,86 @@ def save_figure(fig, filename, formats=None, **kwargs):
         fig.savefig(output_path, format=fmt, dpi=600, bbox_inches='tight', **savefig_kwargs)
     
     return os.path.join(PLOTS_OUTPUT_DIR, f"{filename}.{formats[0]}")
+
+
+def load_algorithm_data(runs_dir, metric_name, algorithm_name):
+    """
+    Load metric data from algorithm runs for comparison plots.
+    
+    Args:
+        runs_dir (str): Directory containing run folders
+        metric_name (str): Name of the metric file (without .pkl extension)
+        algorithm_name (str): Algorithm name for logging
+        
+    Returns:
+        list: List of metric arrays from all runs
+    """
+    metric_data = []
+    
+    if not os.path.exists(runs_dir):
+        print(f"Warning: Directory {runs_dir} does not exist")
+        return metric_data
+    
+    # Get all run directories
+    run_dirs = [d for d in os.listdir(runs_dir) 
+                if os.path.isdir(os.path.join(runs_dir, d)) and d.startswith('run_')]
+    
+    for run_dir in sorted(run_dirs):
+        run_path = os.path.join(runs_dir, run_dir, 'data')
+        
+        if not os.path.exists(run_path):
+            continue
+            
+        # Look for the specific metric file
+        filename = f"{algorithm_name}__{metric_name}.pkl"
+        filepath = os.path.join(run_path, filename)
+        
+        if os.path.exists(filepath):
+            try:
+                with open(filepath, "rb") as f:
+                    data = pickle.load(f)
+                    
+                # Convert to numpy array and handle dimensionality
+                data = np.array(data)
+                
+                # If multi-dimensional, take mean across agents/houses
+                if data.ndim > 1:
+                    data = np.mean(data, axis=1)
+                    
+                metric_data.append(data.flatten())
+                
+            except Exception as e:
+                print(f"  Error loading {filename}: {e}")
+    
+    return metric_data
+
+
+def classify_runs_by_algorithm(ddpg_runs_dir="runs", dqn_runs_dir="dqn_runs"):
+    """
+    Create data structure for algorithm comparison similar to mechanism classification.
+    
+    Args:
+        ddpg_runs_dir (str): Directory containing DDPG runs
+        dqn_runs_dir (str): Directory containing DQN runs
+        
+    Returns:
+        dict: Dictionary with algorithm types as keys and data as values
+    """
+    algorithm_data = {
+        'ddpg': {'runs_dir': ddpg_runs_dir},
+        'dqn': {'runs_dir': dqn_runs_dir}
+    }
+    
+    return algorithm_data
+
+
+# Algorithm colors matching the rewards comparison script
+ALGORITHM_COLORS = {
+    'ddpg': '#D46600',  # Orange
+    'dqn': '#6F6F6F'    # Dark Gray
+}
+
+ALGORITHM_NAMES = {
+    'ddpg': 'DDPG',
+    'dqn': 'DQN'
+}

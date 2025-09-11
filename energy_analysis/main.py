@@ -2,10 +2,15 @@
 Main script for energy mechanism analysis and visualization.
 
 This script orchestrates the entire analysis process:
-1. Classifies runs by mechanism
+1. Classifies runs by mechanism or compares algorithms
 2. Loads and processes data
 3. Generates visualizations
 4. Handles errors gracefully
+
+Usage:
+    python main.py                                    # Default: mechanism comparison
+    python main.py --mode algorithm                   # Algorithm comparison mode
+    python main.py --mode algorithm --ddpg-dir runs --dqn-dir dqn_runs  # Custom directories
 """
 
 
@@ -13,6 +18,7 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import argparse
 import traceback
 import numpy as np
 from energy_analysis.config import PLOTS_OUTPUT_DIR
@@ -62,12 +68,15 @@ def identify_outliers(data_by_mechanism, threshold=5.0):
     
     return outliers
 
-def generate_plots(data_by_mechanism):
+def generate_plots(data_by_mechanism, comparison_mode="mechanism", ddpg_runs_dir="runs", dqn_runs_dir="dqn_runs"):
     """
     Generate all plots using the loaded data.
     
     Args:
         data_by_mechanism (dict): Dictionary containing processed data for each mechanism
+        comparison_mode (str): Either "mechanism" or "algorithm" for comparison type
+        ddpg_runs_dir (str): Directory containing DDPG runs (for algorithm mode)
+        dqn_runs_dir (str): Directory containing DQN runs (for algorithm mode)
         
     Returns:
         dict: Dictionary mapping plot names to their file paths
@@ -81,10 +90,15 @@ def generate_plots(data_by_mechanism):
         ('p2p_price_convergence', plot_p2p_price_convergence)
     ]
     
+    print(f"Generating visualizations in {comparison_mode} comparison mode...")
+    
     for plot_name, plot_function in plot_functions:
         try:
             print(f"Generating {plot_name} visualization...")
-            result = plot_function(data_by_mechanism)
+            if comparison_mode == "algorithm":
+                result = plot_function(data_by_mechanism, comparison_mode, ddpg_runs_dir, dqn_runs_dir)
+            else:
+                result = plot_function(data_by_mechanism)
             if result:
                 if isinstance(result, list):
                     plot_paths[plot_name] = result
@@ -104,38 +118,63 @@ def main():
     """
     Main function to orchestrate the energy mechanism analysis process.
     """
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description='Energy Mechanism Analysis Tool')
+    parser.add_argument('--mode', choices=['mechanism', 'algorithm'], default='mechanism',
+                       help='Comparison mode: mechanism (default) or algorithm')
+    parser.add_argument('--ddpg-dir', default='runs',
+                       help='Directory containing DDPG runs (default: runs)')
+    parser.add_argument('--dqn-dir', default='dqn_runs',
+                       help='Directory containing DQN runs (default: dqn_runs)')
+    
+    args = parser.parse_args()
+    
     # Banner
     print("=" * 80)
     print("Energy Mechanism Analysis Tool")
     print("=" * 80)
+    print(f"Mode: {args.mode.title()} comparison")
+    if args.mode == 'algorithm':
+        print(f"DDPG runs directory: {args.ddpg_dir}")
+        print(f"DQN runs directory: {args.dqn_dir}")
+    print("=" * 80)
     
-    # Classify runs by mechanism type
-    print("\nClassifying runs by mechanism type...")
-    runs_by_mechanism = classify_runs_by_mechanism()
+    if args.mode == 'algorithm':
+        # Algorithm comparison mode - create dummy data structure
+        print("\nRunning in algorithm comparison mode...")
+        data_by_mechanism = {}  # Empty dict as plots will load data directly
+        
+    else:
+        # Default mechanism comparison mode
+        # Classify runs by mechanism type
+        print("\nClassifying runs by mechanism type...")
+        runs_by_mechanism = classify_runs_by_mechanism()
+        
+        # Print summary
+        for mechanism, run_ids in runs_by_mechanism.items():
+            print(f"{mechanism}: {len(run_ids)} runs - {run_ids}")
+        
+        # Load data from all runs
+        print("\nLoading data from all runs...")
+        data_by_mechanism = load_data(runs_by_mechanism)
     
-    # Print summary
-    for mechanism, run_ids in runs_by_mechanism.items():
-        print(f"{mechanism}: {len(run_ids)} runs - {run_ids}")
-    
-    # Load data from all runs
-    print("\nLoading data from all runs...")
-    data_by_mechanism = load_data(runs_by_mechanism)
-    
-    # Identify outliers
-    print("\nScanning for outlier runs...")
-    outliers = identify_outliers(data_by_mechanism)
+    if args.mode == 'mechanism':
+        # Only scan for outliers in mechanism mode
+        # Identify outliers
+        print("\nScanning for outlier runs...")
+        outliers = identify_outliers(data_by_mechanism)
 
-    # Print summary of outliers
-    print("\nSummary of detected outliers:")
-    for mechanism, outlier_runs in outliers.items():
-        if outlier_runs:
-            print(f"{mechanism}: {outlier_runs}")
-        else:
-            print(f"{mechanism}: No outliers detected")
+        # Print summary of outliers
+        print("\nSummary of detected outliers:")
+        for mechanism, outlier_runs in outliers.items():
+            if outlier_runs:
+                print(f"{mechanism}: {outlier_runs}")
+            else:
+                print(f"{mechanism}: No outliers detected")
 
     # Generate all plots
     print("\nGenerating IEEE-compliant plots...")
-    plot_paths = generate_plots(data_by_mechanism)
+    plot_paths = generate_plots(data_by_mechanism, args.mode, args.ddpg_dir, args.dqn_dir)
     
     # Final report
     print("\n" + "=" * 80)
