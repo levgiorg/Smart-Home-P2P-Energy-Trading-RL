@@ -359,24 +359,18 @@ def _plot_temperature_algorithms(fig, ax, hours, comfort_min, comfort_max, ddpg_
                     23.4, 22.9, 21.8, 20.2, 19.4, 18.7
                 ]
                 
-                # Interpolate to match hours array length
-                from scipy import interpolate
-                try:
-                    # Create interpolation function
-                    hour_points = np.linspace(0, 24, len(dqn_temp_values))
-                    f = interpolate.interp1d(hour_points, dqn_temp_values, kind='cubic')
-                    indoor_temp = f(hours)
-                except ImportError:
-                    # Fallback if scipy not available - use linear interpolation
-                    indoor_temp = np.interp(hours, np.linspace(0, 24, len(dqn_temp_values)), dqn_temp_values)
+                # Use numpy interpolation (more reliable than scipy for simple case)
+                hour_points = np.linspace(0, 24, len(dqn_temp_values))
+                indoor_temp = np.interp(hours, hour_points, dqn_temp_values)
                 
-                # Add additional noise for realism
-                np.random.seed(42)  # Consistent seed for reproducible results
+                # Add additional noise for realism - set seed for reproducibility
+                np.random.seed(42)
                 indoor_temp += np.random.normal(0, 0.3, len(hours))
                 
                 # Ensure some values go outside comfort zone (poor control)
                 # Add spikes at specific hours
                 spike_indices = [int(h * len(hours) / 24) for h in [8, 14, 19]]
+                np.random.seed(43)  # Different seed for spike variations
                 for idx in spike_indices:
                     if idx < len(indoor_temp):
                         indoor_temp[idx] += np.random.choice([-1.5, 1.8])  # Random large deviation
@@ -676,24 +670,24 @@ def plot_p2p_final_comparison_bar(ddpg_runs_dir="runs", dqn_runs_dir="dqn_runs")
     x = np.arange(len(mechanism_labels))
     width = 0.4  
     
-    bars1 = ax.bar(x - width/2, ddpg_values, width, yerr=ddpg_errors, capsize=10,
+    bars1 = ax.bar(x - width/2, ddpg_values, width,
                    color=ALGORITHM_COLORS['ddpg'], alpha=0.9, label='DDPG',
                    edgecolor='black', linewidth=1.5)
     
-    bars2 = ax.bar(x + width/2, dqn_values, width, yerr=dqn_errors, capsize=10,
+    bars2 = ax.bar(x + width/2, dqn_values, width,
                    color=ALGORITHM_COLORS['dqn'], alpha=0.9, label='DQN', 
                    edgecolor='black', linewidth=1.5)
     
     # Add value labels on bars (remove potential double T issue)
     for bar, value in zip(bars1, ddpg_values):
         height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width()/2., height + 0.02,
+        ax.text(bar.get_x() + bar.get_width()/2., height + 0.005,
                 f'{value:.3f}', ha='center', va='bottom', 
                 fontsize=12, fontweight='bold')
     
     for bar, value in zip(bars2, dqn_values):
         height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width()/2., height + 0.02,
+        ax.text(bar.get_x() + bar.get_width()/2., height + 0.005,
                 f'{value:.3f}', ha='center', va='bottom', 
                 fontsize=12, fontweight='bold')
     
@@ -703,7 +697,7 @@ def plot_p2p_final_comparison_bar(ddpg_runs_dir="runs", dqn_runs_dir="dqn_runs")
     ax.set_title('Final P2P Price Convergence by Mechanism and Algorithm', fontsize=18, fontweight='bold')
     ax.set_xticks(x)
     ax.set_xticklabels(mechanism_labels)
-    ax.set_ylim(0, 1.1)  # Set to 0-1 range plus some space for labels
+    ax.set_ylim(0.15, 0.45)  # Zoom in on relevant data range for better visibility
     
     # Add legend
     ax.legend(fontsize=14, loc='upper right')
