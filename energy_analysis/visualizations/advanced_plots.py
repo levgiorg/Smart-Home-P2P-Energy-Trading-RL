@@ -555,7 +555,7 @@ def plot_p2p_final_comparison_bar(ddpg_runs_dir="runs", dqn_runs_dir="dqn_runs")
     from energy_analysis.config import MECHANISM_DISPLAY_NAMES
     from energy_analysis.utils import classify_runs_by_mechanism
     
-    fig, ax = plt.subplots(figsize=(14, 8), dpi=600)  # Increased size for bigger bars
+    fig, ax = plt.subplots(figsize=(12, 7), dpi=600)
     
     # Get mechanism classification
     runs_by_mechanism = classify_runs_by_mechanism()
@@ -674,7 +674,7 @@ def plot_p2p_final_comparison_bar(ddpg_runs_dir="runs", dqn_runs_dir="dqn_runs")
     
     # Create grouped bar chart  
     x = np.arange(len(mechanism_labels))
-    width = 0.4  # Increased bar width for bigger bars
+    width = 0.4  
     
     bars1 = ax.bar(x - width/2, ddpg_values, width, yerr=ddpg_errors, capsize=10,
                    color=ALGORITHM_COLORS['ddpg'], alpha=0.9, label='DDPG',

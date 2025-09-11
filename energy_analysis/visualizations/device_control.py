@@ -285,14 +285,10 @@ def _plot_battery_management_algorithms(fig, ax1, hours, ddpg_runs_dir, dqn_runs
     ax2.set_ylabel("Charging Rate (kW)", fontsize=16)
     ax2.set_ylim(-4, 4)
     ax2.tick_params(axis='y', labelsize=16)
-    # Hide numeric tick labels on right y-axis
-    ax2.tick_params(labelright=False)
     
     ax3.set_ylabel("Grid Price (€/MWh)", fontsize=16, color=IEEE_COLORS['purple'])
     ax3.tick_params(axis='y', colors=IEEE_COLORS['purple'], labelsize=16)
     ax3.set_ylim(min(grid_price) * 0.9, max(grid_price) * 1.1)
-    # Hide numeric tick labels on right y-axis
-    ax3.tick_params(labelright=False)
     
     # Add annotations
     low_price_idx = np.argmin(grid_price)
