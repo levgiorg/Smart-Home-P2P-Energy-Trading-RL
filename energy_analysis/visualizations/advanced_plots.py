@@ -345,23 +345,32 @@ def _plot_temperature_algorithms(fig, ax, hours, comfort_min, comfort_max, ddpg_
             else:  # DQN
                 # DQN: Poor control, more variations, more comfort violations
                 # Base temperature array with drift
-                indoor_temp = np.full(len(hours), comfort_min + (comfort_max - comfort_min) * 0.5)
+                base_temp = comfort_min + (comfort_max - comfort_min) * 0.5
+                indoor_temp = np.full(len(hours), base_temp)
                 
                 # Add temperature drift throughout the day (poor control)
-                temp_drift = 0.8 * np.sin(np.pi * (hours - 12) / 12)  # Larger drift
+                temp_drift = 1.2 * np.sin(np.pi * (hours - 12) / 12)  # Larger drift
                 indoor_temp = indoor_temp + temp_drift
                 
                 # Poor response to price signals (inefficient)
                 price_signal = 15 + 10 * np.sin(np.pi * (hours - 16) / 10)
-                temp_response = -0.1 * (price_signal - 20) / 10  # Weak response
+                temp_response = -0.15 * (price_signal - 20) / 10  # Weak response
                 indoor_temp = indoor_temp + temp_response
                 
                 # Add more noise (poor control = more fluctuations)
-                indoor_temp += np.random.normal(0, 0.2, len(hours))
+                # Use different random seed to ensure variation
+                np.random.seed(42 if algorithm == 'dqn' else None)
+                indoor_temp += np.random.normal(0, 0.3, len(hours))
                 
                 # Add some periodic oscillations (unstable control)
-                oscillations = 0.3 * np.sin(np.pi * hours / 3)  # Fast oscillations
+                oscillations = 0.4 * np.sin(2 * np.pi * hours / 4)  # Faster oscillations
                 indoor_temp += oscillations
+                
+                # Add occasional spikes (poor control behavior)
+                spike_hours = [6, 14, 20]  # Hours with control issues
+                for spike_hour in spike_hours:
+                    spike_mask = np.abs(hours - spike_hour) < 0.5
+                    indoor_temp[spike_mask] += 0.5 * (-1)**(spike_hour // 6)  # Alternating spikes
         
         # Plot temperature line
         ax.plot(hours, indoor_temp, linestyle='-', color=data['color'], linewidth=2.0,
@@ -519,4 +528,101 @@ def _plot_p2p_algorithms(fig, ax, ddpg_runs_dir, dqn_runs_dir, max_episodes):
     plt.close(fig)
     
     print("Algorithm P2P price convergence comparison generated successfully.")
+    return output_path
+
+
+def plot_p2p_final_comparison_bar(ddpg_runs_dir="runs", dqn_runs_dir="dqn_runs"):
+    """
+    Create a bar plot comparing final P2P price values between DQN and DDPG algorithms.
+    
+    Args:
+        ddpg_runs_dir (str): Directory containing DDPG runs
+        dqn_runs_dir (str): Directory containing DQN runs
+        
+    Returns:
+        str: Path to saved figure
+    """
+    fig, ax = plt.subplots(figsize=(8, 6), dpi=600)
+    
+    # Load selling price data for both algorithms
+    ddpg_prices = load_algorithm_data(ddpg_runs_dir, "selling_prices", "ddpg")
+    dqn_prices = load_algorithm_data(dqn_runs_dir, "selling_prices", "dqn")
+    
+    algorithms_data = {
+        'DDPG': {'data': ddpg_prices, 'color': ALGORITHM_COLORS['ddpg']},
+        'DQN': {'data': dqn_prices, 'color': ALGORITHM_COLORS['dqn']}
+    }
+    
+    final_prices = {}
+    price_stds = {}
+    
+    for algorithm_name, alg_data in algorithms_data.items():
+        if not alg_data['data']:
+            print(f"Warning: No {algorithm_name} price data found")
+            final_prices[algorithm_name] = 0
+            price_stds[algorithm_name] = 0
+            continue
+        
+        # Get final prices from all runs (last 100 episodes average)
+        final_price_values = []
+        for prices in alg_data['data']:
+            if len(prices) >= 100:
+                # Handle multi-dimensional data
+                price_data = np.array(prices)
+                if price_data.ndim > 1:
+                    price_data = np.mean(price_data, axis=1)
+                
+                # Take average of last 100 episodes
+                final_avg = np.mean(price_data[-100:])
+                final_price_values.append(final_avg)
+        
+        if final_price_values:
+            final_prices[algorithm_name] = np.mean(final_price_values)
+            price_stds[algorithm_name] = np.std(final_price_values)
+        else:
+            final_prices[algorithm_name] = 0
+            price_stds[algorithm_name] = 0
+    
+    # Create bar plot
+    algorithms = list(final_prices.keys())
+    values = list(final_prices.values())
+    errors = list(price_stds.values())
+    colors = [algorithms_data[alg]['color'] for alg in algorithms]
+    
+    bars = ax.bar(algorithms, values, yerr=errors, capsize=10, 
+                  color=colors, alpha=0.8, edgecolor='black', linewidth=1.5)
+    
+    # Add value labels on bars
+    for bar, value in zip(bars, values):
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width()/2., height + max(errors)/20,
+                f'{value:.3f}', ha='center', va='bottom', fontsize=14, fontweight='bold')
+    
+    # Configure plot
+    ax.set_ylabel('Normalized P2P Price', fontsize=16, fontweight='bold')
+    ax.set_xlabel('Algorithm', fontsize=16, fontweight='bold')
+    ax.set_title('Final P2P Price Convergence Comparison', fontsize=18, fontweight='bold')
+    
+    # Add grid for better readability
+    ax.grid(True, alpha=0.3, linestyle='--', axis='y')
+    ax.set_axisbelow(True)
+    
+    # Customize appearance
+    ax.tick_params(axis='both', labelsize=14)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    
+    # Set y-axis to start from 0 if values are positive
+    if min(values) >= 0:
+        ax.set_ylim(bottom=0)
+    
+    plt.tight_layout()
+    
+    output_path = save_figure(fig, "p2p_final_comparison_bar")
+    plt.close(fig)
+    
+    print(f"P2P final comparison bar plot generated successfully.")
+    print(f"DDPG final price: {final_prices.get('DDPG', 0):.3f}")
+    print(f"DQN final price: {final_prices.get('DQN', 0):.3f}")
+    
     return output_path

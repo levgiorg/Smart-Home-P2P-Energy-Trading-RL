@@ -18,12 +18,14 @@ from energy_analysis.visualizations.device_control import plot_battery_managemen
 from energy_analysis.visualizations.energy_metrics import plot_energy_consumption_breakdown
 from energy_analysis.visualizations.advanced_plots import (
     plot_temperature_comfort_zone,
-    plot_p2p_price_convergence
+    plot_p2p_price_convergence,
+    plot_p2p_final_comparison_bar
 )
 
 __all__ = [
     'plot_battery_management',
     'plot_energy_consumption_breakdown',
     'plot_temperature_comfort_zone',
-    'plot_p2p_price_convergence'
+    'plot_p2p_price_convergence',
+    'plot_p2p_final_comparison_bar'
 ]

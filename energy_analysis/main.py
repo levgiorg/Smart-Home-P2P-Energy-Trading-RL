@@ -28,7 +28,8 @@ from energy_analysis.visualizations import (
     plot_battery_management,
     plot_energy_consumption_breakdown,
     plot_temperature_comfort_zone,
-    plot_p2p_price_convergence
+    plot_p2p_price_convergence,
+    plot_p2p_final_comparison_bar
 )
 
 def identify_outliers(data_by_mechanism, threshold=5.0):
@@ -90,13 +91,21 @@ def generate_plots(data_by_mechanism, comparison_mode="mechanism", ddpg_runs_dir
         ('p2p_price_convergence', plot_p2p_price_convergence)
     ]
     
+    # Add the new bar plot for algorithm comparison mode
+    if comparison_mode == "algorithm":
+        plot_functions.append(('p2p_final_comparison_bar', plot_p2p_final_comparison_bar))
+    
     print(f"Generating visualizations in {comparison_mode} comparison mode...")
     
     for plot_name, plot_function in plot_functions:
         try:
             print(f"Generating {plot_name} visualization...")
             if comparison_mode == "algorithm":
-                result = plot_function(data_by_mechanism, comparison_mode, ddpg_runs_dir, dqn_runs_dir)
+                if plot_name == 'p2p_final_comparison_bar':
+                    # Special case for bar plot - doesn't need data_by_mechanism
+                    result = plot_function(ddpg_runs_dir, dqn_runs_dir)
+                else:
+                    result = plot_function(data_by_mechanism, comparison_mode, ddpg_runs_dir, dqn_runs_dir)
             else:
                 result = plot_function(data_by_mechanism)
             if result:

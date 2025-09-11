@@ -40,14 +40,19 @@ MECHANISM_DISPLAY_NAMES = {
 # Configure matplotlib for IEEE-compliant plots
 def configure_matplotlib():
     """Configure matplotlib settings for IEEE-compliant figures."""
+    # Use fallback fonts if Times New Roman is not available
     mpl.rcParams['font.family'] = 'serif'
-    mpl.rcParams['font.serif'] = ['Times New Roman']
+    mpl.rcParams['font.serif'] = ['Times New Roman', 'Times', 'DejaVu Serif', 'serif']
     mpl.rcParams['axes.labelsize'] = 12
     mpl.rcParams['axes.titlesize'] = 14
     mpl.rcParams['xtick.labelsize'] = 10
     mpl.rcParams['ytick.labelsize'] = 10
     mpl.rcParams['legend.fontsize'] = 10
     mpl.rcParams['figure.dpi'] = 300
+    
+    # Suppress font warnings
+    import warnings
+    warnings.filterwarnings("ignore", category=UserWarning, module="matplotlib.font_manager")
     mpl.rcParams['savefig.dpi'] = 300
     mpl.rcParams['lines.linewidth'] = 1.5
     mpl.rcParams['grid.linewidth'] = 1.5
