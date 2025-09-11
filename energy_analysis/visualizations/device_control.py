@@ -131,14 +131,14 @@ def plot_battery_management(data_by_mechanism, comparison_mode="mechanism", ddpg
     # Increase font size from 12 to 16
     ax2.set_ylabel("Charging Rate (kW)", fontsize=16)
     ax2.set_ylim(-3, 3)
-    # Hide numeric tick labels on right y-axis while keeping axis title
-    ax2.tick_params(axis='y', labelright=False)
+    # Increase tick font size
+    ax2.tick_params(axis='y', labelsize=16)
     
     # Increase line width from 1.5 to 2.5
     ax3.plot(hours, grid_price, color=IEEE_COLORS['purple'], linewidth=2.5, linestyle=':', label='Grid Price')
     # Increase font size from 12 to 16
     ax3.set_ylabel("Grid Price (€/MWh)", fontsize=16, color=IEEE_COLORS['purple'])
-    ax3.tick_params(axis='y', colors=IEEE_COLORS['purple'], labelright=False)
+    ax3.tick_params(axis='y', colors=IEEE_COLORS['purple'], labelsize=16)
     ax3.set_ylim(min(grid_price) * 0.9, max(grid_price) * 1.1)  # Set y limits based on actual data range
     
     # Add annotations for key periods with better positioning like in the reference image
@@ -284,10 +284,10 @@ def _plot_battery_management_algorithms(fig, ax1, hours, ddpg_runs_dir, dqn_runs
     
     ax2.set_ylabel("Charging Rate (kW)", fontsize=16)
     ax2.set_ylim(-4, 4)
-    ax2.tick_params(axis='y', labelright=False)
+    ax2.tick_params(axis='y', labelsize=16)
     
     ax3.set_ylabel("Grid Price (€/MWh)", fontsize=16, color=IEEE_COLORS['purple'])
-    ax3.tick_params(axis='y', colors=IEEE_COLORS['purple'], labelright=False)
+    ax3.tick_params(axis='y', colors=IEEE_COLORS['purple'], labelsize=16)
     ax3.set_ylim(min(grid_price) * 0.9, max(grid_price) * 1.1)
     
     # Add annotations
