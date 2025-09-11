@@ -288,6 +288,8 @@ def _plot_battery_management_algorithms(fig, ax1, hours, ddpg_runs_dir, dqn_runs
     # Explicitly set charging rate ticks to avoid 0.0-1.0 scale
     import matplotlib.ticker as ticker
     ax2.yaxis.set_major_locator(ticker.FixedLocator([-4, -2, 0, 2, 4]))
+    # Remove numeric tick labels but keep axis title and gridlines
+    ax2.set_yticklabels([])
     
     ax3.set_ylabel("Grid Price (€/MWh)", fontsize=16, color=IEEE_COLORS['purple'])
     ax3.tick_params(axis='y', colors=IEEE_COLORS['purple'], labelsize=16)
@@ -297,6 +299,8 @@ def _plot_battery_management_algorithms(fig, ax1, hours, ddpg_runs_dir, dqn_runs
     price_min = int(min(grid_price))
     price_max = int(max(grid_price)) + 1
     ax3.yaxis.set_major_locator(ticker.FixedLocator(np.arange(price_min, price_max + 1, 5)))
+    # Remove numeric tick labels but keep axis title and gridlines  
+    ax3.set_yticklabels([])
     
     # Add annotations
     low_price_idx = np.argmin(grid_price)

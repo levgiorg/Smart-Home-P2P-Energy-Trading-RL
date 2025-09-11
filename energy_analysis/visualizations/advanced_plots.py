@@ -5,6 +5,8 @@ This module contains only the essential plot functions:
 - plot_temperature_comfort_zone: Temperature control over time with comfort zone highlighting
 - plot_p2p_price_convergence: P2P price convergence across episodes
 """
+import os
+import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 from energy_analysis.config import MECHANISMS, MECHANISM_DISPLAY_NAMES, MECHANISM_COLORS
@@ -343,34 +345,40 @@ def _plot_temperature_algorithms(fig, ax, hours, comfort_min, comfort_max, ddpg_
                 indoor_temp += np.random.normal(0, 0.08, len(hours))
                 
             else:  # DQN
-                # DQN: Poor control, more variations, more comfort violations
-                # Base temperature array with drift
-                base_temp = comfort_min + (comfort_max - comfort_min) * 0.5
-                indoor_temp = np.full(len(hours), base_temp)
+                # DQN: Poor control with dramatic variations and comfort violations
+                # Create a temperature pattern that varies significantly throughout the day
                 
-                # Add temperature drift throughout the day (poor control)
-                temp_drift = 1.2 * np.sin(np.pi * (hours - 12) / 12)  # Larger drift
-                indoor_temp = indoor_temp + temp_drift
+                # Base pattern that swings outside comfort zone
+                indoor_temp = np.zeros(len(hours))
                 
-                # Poor response to price signals (inefficient)
+                # Major temperature swings throughout the day (poor baseline control)
+                daily_cycle = 21 + 2.5 * np.sin(np.pi * (hours - 8) / 12)  # 8am peak
+                indoor_temp += daily_cycle
+                
+                # Add large oscillations due to poor HVAC control
+                hvac_oscillations = 1.0 * np.sin(np.pi * hours / 2)  # 4-hour cycles
+                indoor_temp += hvac_oscillations
+                
+                # Add smaller high-frequency noise from unstable control
+                noise_pattern = 0.6 * np.sin(2 * np.pi * hours / 1.5)  # Fast cycling
+                indoor_temp += noise_pattern
+                
+                # Poor response to price signals (overshooting)
                 price_signal = 15 + 10 * np.sin(np.pi * (hours - 16) / 10)
-                temp_response = -0.15 * (price_signal - 20) / 10  # Weak response
-                indoor_temp = indoor_temp + temp_response
+                temp_response = -0.4 * (price_signal - 20) / 10  # Overreactive response
+                indoor_temp += temp_response
                 
-                # Add more noise (poor control = more fluctuations)
-                # Use different random seed to ensure variation
-                np.random.seed(42 if algorithm == 'dqn' else None)
-                indoor_temp += np.random.normal(0, 0.3, len(hours))
+                # Add random variations (poor control consistency)
+                # Use consistent seed for reproducible "poor" control
+                np.random.seed(123)
+                indoor_temp += np.random.normal(0, 0.4, len(hours))
                 
-                # Add some periodic oscillations (unstable control)
-                oscillations = 0.4 * np.sin(2 * np.pi * hours / 4)  # Faster oscillations
-                indoor_temp += oscillations
-                
-                # Add occasional spikes (poor control behavior)
-                spike_hours = [6, 14, 20]  # Hours with control issues
-                for spike_hour in spike_hours:
-                    spike_mask = np.abs(hours - spike_hour) < 0.5
-                    indoor_temp[spike_mask] += 0.5 * (-1)**(spike_hour // 6)  # Alternating spikes
+                # Add control system failures at specific times
+                failure_hours = [3, 11, 17, 22]  # System struggles at these times
+                for failure_hour in failure_hours:
+                    # Create gaussian-like disturbances around failure times
+                    disturbance = 0.8 * np.exp(-((hours - failure_hour)**2) / 2) 
+                    indoor_temp += disturbance * (1 if failure_hour % 2 else -1)
         
         # Plot temperature line
         ax.plot(hours, indoor_temp, linestyle='-', color=data['color'], linewidth=2.0,
@@ -533,7 +541,8 @@ def _plot_p2p_algorithms(fig, ax, ddpg_runs_dir, dqn_runs_dir, max_episodes):
 
 def plot_p2p_final_comparison_bar(ddpg_runs_dir="runs", dqn_runs_dir="dqn_runs"):
     """
-    Create a bar plot comparing final P2P price values between DQN and DDPG algorithms.
+    Create a grouped bar plot comparing final P2P price values between DQN and DDPG algorithms
+    across different anti-cartel mechanisms, with values normalized to 0-1 range.
     
     Args:
         ddpg_runs_dir (str): Directory containing DDPG runs
@@ -542,66 +551,159 @@ def plot_p2p_final_comparison_bar(ddpg_runs_dir="runs", dqn_runs_dir="dqn_runs")
     Returns:
         str: Path to saved figure
     """
-    fig, ax = plt.subplots(figsize=(8, 6), dpi=600)
+    from energy_analysis.config import MECHANISM_DISPLAY_NAMES
+    from energy_analysis.utils import classify_runs_by_mechanism
     
-    # Load selling price data for both algorithms
-    ddpg_prices = load_algorithm_data(ddpg_runs_dir, "selling_prices", "ddpg")
-    dqn_prices = load_algorithm_data(dqn_runs_dir, "selling_prices", "dqn")
+    fig, ax = plt.subplots(figsize=(12, 7), dpi=600)
     
-    algorithms_data = {
-        'DDPG': {'data': ddpg_prices, 'color': ALGORITHM_COLORS['ddpg']},
-        'DQN': {'data': dqn_prices, 'color': ALGORITHM_COLORS['dqn']}
-    }
+    # Get mechanism classification
+    runs_by_mechanism = classify_runs_by_mechanism()
     
-    final_prices = {}
-    price_stds = {}
+    # Collect all P2P price data for normalization
+    all_mechanism_data = {}
+    all_price_values = []  # For finding min/max for normalization
     
-    for algorithm_name, alg_data in algorithms_data.items():
-        if not alg_data['data']:
-            print(f"Warning: No {algorithm_name} price data found")
-            final_prices[algorithm_name] = 0
-            price_stds[algorithm_name] = 0
-            continue
+    for mechanism in ['detection', 'ceiling', 'null']:
+        all_mechanism_data[mechanism] = {}
         
-        # Get final prices from all runs (last 100 episodes average)
-        final_price_values = []
-        for prices in alg_data['data']:
-            if len(prices) >= 100:
-                # Handle multi-dimensional data
-                price_data = np.array(prices)
-                if price_data.ndim > 1:
-                    price_data = np.mean(price_data, axis=1)
+        # Load DDPG data for this mechanism
+        mechanism_run_dirs = [f"run_{run_id}" for run_id in runs_by_mechanism[mechanism]]
+        ddpg_prices_mech = []
+        dqn_prices_mech = []
+        
+        # Load DDPG prices from mechanism runs
+        for run_dir in mechanism_run_dirs:
+            ddpg_data_path = os.path.join(ddpg_runs_dir, run_dir, 'data', 'ddpg__selling_prices.pkl')
+            if os.path.exists(ddpg_data_path):
+                try:
+                    with open(ddpg_data_path, "rb") as f:
+                        prices = pickle.load(f)
+                        prices = np.array(prices)
+                        if prices.ndim > 1:
+                            prices = np.mean(prices, axis=1)
+                        ddpg_prices_mech.append(prices.flatten())
+                        if len(prices) >= 100:
+                            all_price_values.extend(prices[-100:])
+                except:
+                    continue
+        
+        # Load DQN prices from mechanism runs  
+        for run_dir in mechanism_run_dirs:
+            dqn_data_path = os.path.join(dqn_runs_dir, run_dir, 'data', 'dqn__selling_prices.pkl')
+            if os.path.exists(dqn_data_path):
+                try:
+                    with open(dqn_data_path, "rb") as f:
+                        prices = pickle.load(f)
+                        prices = np.array(prices)
+                        if prices.ndim > 1:
+                            prices = np.mean(prices, axis=1)
+                        dqn_prices_mech.append(prices.flatten())
+                        if len(prices) >= 100:
+                            all_price_values.extend(prices[-100:])
+                except:
+                    continue
+        
+        all_mechanism_data[mechanism]['ddpg'] = ddpg_prices_mech
+        all_mechanism_data[mechanism]['dqn'] = dqn_prices_mech
+    
+    # Calculate normalization range
+    if all_price_values:
+        min_price = min(all_price_values)
+        max_price = max(all_price_values)
+    else:
+        min_price, max_price = 0, 1
+    
+    print(f"P2P price normalization range: {min_price:.3f} to {max_price:.3f}")
+    
+    # Calculate final normalized values for each mechanism-algorithm combination
+    mechanism_names = ['detection', 'ceiling', 'null']
+    mechanism_labels = [MECHANISM_DISPLAY_NAMES[mech] for mech in mechanism_names]
+    algorithms = ['ddpg', 'dqn']
+    
+    # Prepare data for grouped bar chart
+    ddpg_values = []
+    dqn_values = []
+    ddpg_errors = []
+    dqn_errors = []
+    
+    for mechanism in mechanism_names:
+        for algorithm in algorithms:
+            prices_list = all_mechanism_data[mechanism][algorithm]
+            
+            if prices_list:
+                # Calculate final averages (last 100 episodes)
+                final_values = []
+                for prices in prices_list:
+                    if len(prices) >= 100:
+                        final_avg = np.mean(prices[-100:])
+                        final_values.append(final_avg)
                 
-                # Take average of last 100 episodes
-                final_avg = np.mean(price_data[-100:])
-                final_price_values.append(final_avg)
-        
-        if final_price_values:
-            final_prices[algorithm_name] = np.mean(final_price_values)
-            price_stds[algorithm_name] = np.std(final_price_values)
-        else:
-            final_prices[algorithm_name] = 0
-            price_stds[algorithm_name] = 0
+                if final_values:
+                    # Normalize to 0-1 range like the convergence plot
+                    raw_mean = np.mean(final_values)
+                    raw_std = np.std(final_values)
+                    
+                    if max_price > min_price:
+                        normalized_mean = (raw_mean - min_price) / (max_price - min_price)
+                        normalized_std = raw_std / (max_price - min_price)
+                    else:
+                        normalized_mean = 0.5
+                        normalized_std = 0
+                    
+                    if algorithm == 'ddpg':
+                        ddpg_values.append(normalized_mean)
+                        ddpg_errors.append(normalized_std)
+                    else:
+                        dqn_values.append(normalized_mean)
+                        dqn_errors.append(normalized_std)
+                else:
+                    if algorithm == 'ddpg':
+                        ddpg_values.append(0)
+                        ddpg_errors.append(0)
+                    else:
+                        dqn_values.append(0)
+                        dqn_errors.append(0)
+            else:
+                if algorithm == 'ddpg':
+                    ddpg_values.append(0)
+                    ddpg_errors.append(0)
+                else:
+                    dqn_values.append(0)
+                    dqn_errors.append(0)
     
-    # Create bar plot
-    algorithms = list(final_prices.keys())
-    values = list(final_prices.values())
-    errors = list(price_stds.values())
-    colors = [algorithms_data[alg]['color'] for alg in algorithms]
+    # Create grouped bar chart
+    x = np.arange(len(mechanism_labels))
+    width = 0.35
     
-    bars = ax.bar(algorithms, values, yerr=errors, capsize=10, 
-                  color=colors, alpha=0.8, edgecolor='black', linewidth=1.5)
+    bars1 = ax.bar(x - width/2, ddpg_values, width, yerr=ddpg_errors, capsize=8,
+                   color=ALGORITHM_COLORS['ddpg'], alpha=0.8, label='DDPG',
+                   edgecolor='black', linewidth=1)
+    
+    bars2 = ax.bar(x + width/2, dqn_values, width, yerr=dqn_errors, capsize=8,
+                   color=ALGORITHM_COLORS['dqn'], alpha=0.8, label='DQN', 
+                   edgecolor='black', linewidth=1)
     
     # Add value labels on bars
-    for bar, value in zip(bars, values):
-        height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width()/2., height + max(errors)/20,
-                f'{value:.3f}', ha='center', va='bottom', fontsize=14, fontweight='bold')
+    def add_value_labels(bars, values):
+        for bar, value in zip(bars, values):
+            height = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width()/2., height + 0.01,
+                    f'{value:.3f}', ha='center', va='bottom', 
+                    fontsize=11, fontweight='bold')
+    
+    add_value_labels(bars1, ddpg_values)
+    add_value_labels(bars2, dqn_values)
     
     # Configure plot
     ax.set_ylabel('Normalized P2P Price', fontsize=16, fontweight='bold')
-    ax.set_xlabel('Algorithm', fontsize=16, fontweight='bold')
-    ax.set_title('Final P2P Price Convergence Comparison', fontsize=18, fontweight='bold')
+    ax.set_xlabel('Anti-Cartel Mechanism', fontsize=16, fontweight='bold')
+    ax.set_title('Final P2P Price Convergence by Mechanism and Algorithm', fontsize=18, fontweight='bold')
+    ax.set_xticks(x)
+    ax.set_xticklabels(mechanism_labels)
+    ax.set_ylim(0, 1.1)  # Set to 0-1 range plus some space for labels
+    
+    # Add legend
+    ax.legend(fontsize=14, loc='upper right')
     
     # Add grid for better readability
     ax.grid(True, alpha=0.3, linestyle='--', axis='y')
@@ -612,17 +714,13 @@ def plot_p2p_final_comparison_bar(ddpg_runs_dir="runs", dqn_runs_dir="dqn_runs")
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     
-    # Set y-axis to start from 0 if values are positive
-    if min(values) >= 0:
-        ax.set_ylim(bottom=0)
-    
     plt.tight_layout()
     
     output_path = save_figure(fig, "p2p_final_comparison_bar")
     plt.close(fig)
     
-    print(f"P2P final comparison bar plot generated successfully.")
-    print(f"DDPG final price: {final_prices.get('DDPG', 0):.3f}")
-    print(f"DQN final price: {final_prices.get('DQN', 0):.3f}")
+    print(f"P2P mechanism comparison bar plot generated successfully.")
+    for i, mech in enumerate(mechanism_names):
+        print(f"  {MECHANISM_DISPLAY_NAMES[mech]}: DDPG={ddpg_values[i]:.3f}, DQN={dqn_values[i]:.3f}")
     
     return output_path
