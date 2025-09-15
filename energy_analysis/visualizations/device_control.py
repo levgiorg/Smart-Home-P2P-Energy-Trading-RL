@@ -179,7 +179,7 @@ def plot_battery_management(data_by_mechanism, comparison_mode="mechanism", ddpg
                     loc='upper right', fontsize=16, 
                     frameon=True, framealpha=0.9,
                     edgecolor='lightgray',
-                    bbox_to_anchor=(0.5, 0.99),
+                    bbox_to_anchor=(0.99, 0.99),
                     ncol=1)  # Vertical arrangement to minimize horizontal space usage
 
     # Use regular tight layout without needing to reserve extra space
@@ -192,7 +192,6 @@ def plot_battery_management(data_by_mechanism, comparison_mode="mechanism", ddpg
 
     print("Battery management visualization generated successfully.")
     return output_path
-
 def _plot_battery_management_algorithms(fig, ax1, hours, ddpg_runs_dir, dqn_runs_dir):
     """
     Create algorithm comparison version of battery management plot.
