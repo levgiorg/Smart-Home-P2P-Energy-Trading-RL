@@ -4,7 +4,7 @@ Contains only battery management visualization.
 """
 import numpy as np
 import matplotlib.pyplot as plt
-from energy_analysis.config import IEEE_COLORS
+from energy_analysis.config import IEEE_COLORS, PUBLICATION_SETTINGS, apply_publication_style
 from energy_analysis.utils import save_figure, load_algorithm_data, ALGORITHM_COLORS, ALGORITHM_NAMES
 
 
@@ -200,8 +200,9 @@ def _plot_battery_management_algorithms(fig, ax1, hours, ddpg_runs_dir, dqn_runs
     # Close the existing figure and create a completely new one
     plt.close(fig)
     
-    # Create fresh figure with proper size
-    fig, ax1 = plt.subplots(figsize=(9, 5), dpi=600)
+    # Create fresh figure with standardized publication size
+    fig, ax1 = plt.subplots(figsize=PUBLICATION_SETTINGS['single_plot_size'],
+                           dpi=PUBLICATION_SETTINGS['standard_dpi'])
     
     # Add grid
     ax1.grid(True, linestyle='--', alpha=0.7, color='lightgray', linewidth=0.8)
@@ -284,35 +285,40 @@ def _plot_battery_management_algorithms(fig, ax1, hours, ddpg_runs_dir, dqn_runs
         47    # 23h: Ends higher than optimal
     ])
     
-    # Plot the three lines
-    ax1.plot(hours, ddpg_soc, color=ALGORITHM_COLORS['ddpg'], linewidth=3.0, label='DDPG Battery SoC')
-    ax1.plot(hours, dqn_soc, color=ALGORITHM_COLORS['dqn'], linewidth=3.0, label='DQN Battery SoC')
-    ax2.plot(hours, grid_price, color=IEEE_COLORS['purple'], linewidth=2.5, linestyle=':', label='Grid Price')
+    # Plot the three lines with standardized line widths
+    ax1.plot(hours, ddpg_soc, color=ALGORITHM_COLORS['ddpg'],
+            linewidth=PUBLICATION_SETTINGS['line_width'], label='DDPG Battery SoC')
+    ax1.plot(hours, dqn_soc, color=ALGORITHM_COLORS['dqn'],
+            linewidth=PUBLICATION_SETTINGS['line_width'], label='DQN Battery SoC')
+    ax2.plot(hours, grid_price, color=IEEE_COLORS['purple'],
+            linewidth=PUBLICATION_SETTINGS['line_width'], linestyle=':', label='Grid Price')
     
-    # Configure left axis (State of Charge)
-    ax1.set_ylabel("State of Charge (%)", fontsize=16)
+    # Apply standardized publication styling with borders
+    apply_publication_style(ax1, add_borders=True)
+    apply_publication_style(ax2, add_borders=True)
+
+    # Configure left axis (State of Charge) with standardized font sizes
+    ax1.set_ylabel("State of Charge (%)", fontsize=PUBLICATION_SETTINGS['axis_label_fontsize'])
     ax1.set_ylim(0, 100)
-    ax1.tick_params(axis='both', labelsize=16)
-    
-    # Configure right axis (Grid Price)
-    ax2.set_ylabel("Grid Price (€/MWh)", fontsize=16, color=IEEE_COLORS['purple'])
-    ax2.tick_params(axis='y', colors=IEEE_COLORS['purple'], labelsize=16)
+
+    # Configure right axis (Grid Price) with standardized font sizes
+    ax2.set_ylabel("Grid Price (€/MWh)", fontsize=PUBLICATION_SETTINGS['axis_label_fontsize'],
+                  color=IEEE_COLORS['purple'])
+    ax2.tick_params(axis='y', colors=IEEE_COLORS['purple'])
     ax2.set_ylim(min(grid_price) * 0.9, max(grid_price) * 1.1)
-    
-    # No annotation boxes - clean plot
-    
-    # Configure x-axis
-    ax1.set_xlabel("Hour of Day", fontsize=16, fontweight='bold')
+
+    # Configure x-axis with standardized font sizes
+    ax1.set_xlabel("Hour of Day", fontsize=PUBLICATION_SETTINGS['axis_label_fontsize'], fontweight='bold')
     ax1.set_xticks(np.arange(0, 25, 6))
-    
-    # Combine legends
+
+    # Combine legends with standardized settings
     lines1, labels1 = ax1.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
-    
-    ax1.legend(lines1 + lines2, labels1 + labels2, 
-              loc='upper center', fontsize=12, 
-              frameon=True, framealpha=0.9,
-              edgecolor='lightgray',
+
+    ax1.legend(lines1 + lines2, labels1 + labels2,
+              loc='upper center', fontsize=PUBLICATION_SETTINGS['legend_fontsize'],
+              frameon=True, framealpha=PUBLICATION_SETTINGS['legend_framealpha'],
+              edgecolor=PUBLICATION_SETTINGS['legend_edgecolor'],
               bbox_to_anchor=(0.5, 0.98),
               ncol=1)
     

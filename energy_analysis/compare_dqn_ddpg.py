@@ -20,7 +20,7 @@ import time
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from energy_analysis.utils import moving_average, save_figure
-from energy_analysis.config import configure_matplotlib
+from energy_analysis.config import configure_matplotlib, PUBLICATION_SETTINGS, apply_publication_style
 
 # =============================================================================
 # CONFIGURATION - Easy to modify
@@ -172,8 +172,9 @@ def plot_algorithm_rewards_comparison(ddpg_rewards, dqn_rewards):
     Returns:
         str: Path to saved figure
     """
-    # Create figure with IEEE formatting
-    fig, ax = plt.subplots(figsize=(7, 5), dpi=600)
+    # Create figure with standardized publication formatting
+    fig, ax = plt.subplots(figsize=PUBLICATION_SETTINGS['single_plot_size'],
+                          dpi=PUBLICATION_SETTINGS['standard_dpi'])
     
     algorithms_data = {
         'ddpg': ddpg_rewards,
@@ -207,8 +208,9 @@ def plot_algorithm_rewards_comparison(ddpg_rewards, dqn_rewards):
             # Plot the curve
             color = ALGORITHM_COLORS[algorithm]
             label = f"{ALGORITHM_NAMES[algorithm]}"
-            
-            ax.plot(episodes, smoothed_rewards, color=color, linewidth=2.5, 
+
+            ax.plot(episodes, smoothed_rewards, color=color,
+                   linewidth=PUBLICATION_SETTINGS['line_width'],
                    label=label, alpha=0.9)
             
             print(f"Plotted {algorithm.upper()}: {len(rewards_list)} runs, "
@@ -217,22 +219,21 @@ def plot_algorithm_rewards_comparison(ddpg_rewards, dqn_rewards):
         except Exception as e:
             print(f"Error plotting {algorithm.upper()} data: {e}")
     
-    # Configure plot appearance
-    ax.set_xlabel('Episode', fontsize=14, fontweight='bold')
-    ax.set_ylabel('Average Reward', fontsize=14, fontweight='bold')
-    
-    # Add grid
-    ax.grid(True, alpha=0.3, linestyle='--', linewidth=1.0)
-    
-    # Configure legend
-    ax.legend(loc='best', fontsize=12, framealpha=0.9)
-    
+    # Apply standardized publication styling with borders
+    apply_publication_style(ax, add_borders=True)
+
+    # Configure plot appearance with standardized font sizes
+    ax.set_xlabel('Episode', fontsize=PUBLICATION_SETTINGS['axis_label_fontsize'], fontweight='bold')
+    ax.set_ylabel('Average Reward', fontsize=PUBLICATION_SETTINGS['axis_label_fontsize'], fontweight='bold')
+
+    # Configure legend with standardized settings
+    ax.legend(loc='best', fontsize=PUBLICATION_SETTINGS['legend_fontsize'],
+              framealpha=PUBLICATION_SETTINGS['legend_framealpha'],
+              edgecolor=PUBLICATION_SETTINGS['legend_edgecolor'])
+
     # Set axis limits if we have data
     if MAX_EPISODES < 10000:
         ax.set_xlim(SMOOTHING_WINDOW, MAX_EPISODES)
-    
-    # Improve tick appearance
-    ax.tick_params(axis='both', labelsize=12)
     
     plt.tight_layout()
     

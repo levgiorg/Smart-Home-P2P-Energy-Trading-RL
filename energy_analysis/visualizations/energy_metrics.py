@@ -3,7 +3,7 @@ Energy consumption and distribution visualizations for energy mechanism analysis
 """
 import numpy as np
 import matplotlib.pyplot as plt
-from energy_analysis.config import MECHANISMS, IEEE_COLORS, MECHANISM_DISPLAY_NAMES
+from energy_analysis.config import MECHANISMS, IEEE_COLORS, MECHANISM_DISPLAY_NAMES, PUBLICATION_SETTINGS, apply_publication_style
 from energy_analysis.utils import save_figure, load_algorithm_data, ALGORITHM_COLORS, ALGORITHM_NAMES
 
 
@@ -98,8 +98,9 @@ def plot_merged_energy_consumption(mechanism_patterns, mechanism_scaling):
     """
     hours = np.arange(24)
     
-    # Create a figure with three subplots in a row
-    fig, axes = plt.subplots(1, 3, figsize=(12, 4), dpi=600)
+    # Create a figure with three subplots in a row using standardized settings
+    fig, axes = plt.subplots(1, 3, figsize=PUBLICATION_SETTINGS['multi_panel_size'],
+                            dpi=PUBLICATION_SETTINGS['standard_dpi'])
     
     # Map mechanisms to subplot positions
     mechanism_order = ['detection', 'ceiling', 'null']
@@ -126,19 +127,23 @@ def plot_merged_energy_consumption(mechanism_patterns, mechanism_scaling):
         # Third layer: Solar energy
         ax.fill_between(hours, grid_energy + p2p_energy, total_energy, alpha=0.7, color=IEEE_COLORS['orange'], label='Solar Energy')
         
-        # Add subplot label (a), (b), (c) as title
+        # Apply standardized publication styling with borders
+        apply_publication_style(ax, add_borders=True)
+
+        # Add subplot label (a), (b), (c) as title with standardized font size
         display_name = MECHANISM_DISPLAY_NAMES[mechanism]
-        ax.set_title(f"({chr(97+i)}) {display_name}", fontsize=14)
-        
-        # Set labels
-        ax.set_xlabel("Hour of Day", fontsize=12)
-        ax.set_ylabel("Energy (kWh)", fontsize=12)
+        ax.set_title(f"({chr(97+i)}) {display_name}", fontsize=PUBLICATION_SETTINGS['title_fontsize'])
+
+        # Set labels with standardized font sizes
+        ax.set_xlabel("Hour of Day", fontsize=PUBLICATION_SETTINGS['axis_label_fontsize'])
+        ax.set_ylabel("Energy (kWh)", fontsize=PUBLICATION_SETTINGS['axis_label_fontsize'])
         ax.set_xticks(np.arange(0, 25, 6))
-        ax.grid(True, alpha=0.3, linestyle='--', linewidth=1.0)
-        
+
         # Only add legend to the last subplot to save space
         if i == 2:
-            ax.legend(loc='upper right', fontsize=11)
+            ax.legend(loc='upper right', fontsize=PUBLICATION_SETTINGS['legend_fontsize'],
+                     framealpha=PUBLICATION_SETTINGS['legend_framealpha'],
+                     edgecolor=PUBLICATION_SETTINGS['legend_edgecolor'])
     
     plt.tight_layout()
     

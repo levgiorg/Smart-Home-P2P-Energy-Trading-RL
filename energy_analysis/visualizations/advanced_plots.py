@@ -9,7 +9,7 @@ import os
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
-from energy_analysis.config import MECHANISMS, MECHANISM_DISPLAY_NAMES, MECHANISM_COLORS
+from energy_analysis.config import MECHANISMS, MECHANISM_DISPLAY_NAMES, MECHANISM_COLORS, PUBLICATION_SETTINGS, apply_publication_style
 from energy_analysis.utils import save_figure, load_algorithm_data, ALGORITHM_COLORS, ALGORITHM_NAMES
 
 
@@ -27,8 +27,9 @@ def plot_temperature_comfort_zone(data_by_mechanism, comparison_mode="mechanism"
     Returns:
         str: Path to saved figure
     """
-    # Create the figure with IEEE single column dimensions - matching p2p_price_convergence
-    fig, ax = plt.subplots(figsize=(3.5, 2.625), dpi=300)
+    # Create the figure with standardized publication dimensions
+    fig, ax = plt.subplots(figsize=PUBLICATION_SETTINGS['single_plot_size'],
+                          dpi=PUBLICATION_SETTINGS['standard_dpi'])
     
     # Define comfort bounds from hyperparameters (if available)
     comfort_min, comfort_max = 20.0, 22.0  # Default values
@@ -101,7 +102,8 @@ def plot_temperature_comfort_zone(data_by_mechanism, comparison_mode="mechanism"
             indoor_temp += np.random.normal(0, 0.2, len(hours))
         
         # Plot the temperature line
-        ax.plot(hours, indoor_temp, linestyle='-', color=color, linewidth=1.5,
+        ax.plot(hours, indoor_temp, linestyle='-', color=color,
+                linewidth=PUBLICATION_SETTINGS['line_width'],
                 label=f"{MECHANISM_DISPLAY_NAMES[mechanism]}")
         
         # Highlight violations of comfort bounds for visual impact
@@ -111,20 +113,22 @@ def plot_temperature_comfort_zone(data_by_mechanism, comparison_mode="mechanism"
             violation_y = indoor_temp[violations]
             ax.scatter(violation_x, violation_y, color=color, s=10, alpha=0.3)
     
-    # Configure axes and labels
-    ax.set_xlabel('Hour of Day', fontsize=10)
-    ax.set_ylabel('Temperature (°C)', fontsize=10)
-    
+    # Apply standardized publication styling with borders
+    apply_publication_style(ax, add_borders=True)
+
+    # Configure axes and labels with standardized font sizes
+    ax.set_xlabel('Hour of Day', fontsize=PUBLICATION_SETTINGS['axis_label_fontsize'])
+    ax.set_ylabel('Temperature (°C)', fontsize=PUBLICATION_SETTINGS['axis_label_fontsize'])
+
     # Set x-axis to show full day
     ax.set_xlim(0, 24)
     ax.set_xticks(np.arange(0, 25, 6))
-    ax.tick_params(axis='both', labelsize=8)
-    
-    # Use the original legend style but smaller and neater
-    ax.legend(fontsize=6, bbox_to_anchor=(0.58, 0.34) , framealpha=0.5, edgecolor='gray')
-    
-    # Remove grid lines as requested
-    ax.grid(False)
+
+    # Configure legend with standardized settings
+    ax.legend(fontsize=PUBLICATION_SETTINGS['legend_fontsize'],
+              bbox_to_anchor=(0.98, 0.98), loc='upper right',
+              framealpha=PUBLICATION_SETTINGS['legend_framealpha'],
+              edgecolor=PUBLICATION_SETTINGS['legend_edgecolor'])
     plt.tight_layout()
     
     # Save figure
@@ -151,8 +155,9 @@ def plot_p2p_price_convergence(data_by_mechanism, comparison_mode="mechanism", d
     Returns:
         str: Path to saved figure
     """
-    # Create figure
-    fig, ax = plt.subplots(figsize=(3.5, 2.625), dpi=300)
+    # Create figure with standardized publication dimensions
+    fig, ax = plt.subplots(figsize=PUBLICATION_SETTINGS['single_plot_size'],
+                          dpi=PUBLICATION_SETTINGS['standard_dpi'])
     
     if comparison_mode == "algorithm":
         # Algorithm comparison mode
@@ -243,8 +248,8 @@ def plot_p2p_price_convergence(data_by_mechanism, comparison_mode="mechanism", d
             smoothed_episodes = episodes[window_size-1:]
             
             # Plot the smoothed normalized price data
-            ax.plot(smoothed_episodes, smoothed_prices, 
-                   color=colors[i], linewidth=1.5, linestyle='-',
+            ax.plot(smoothed_episodes, smoothed_prices,
+                   color=colors[i], linewidth=PUBLICATION_SETTINGS['line_width'], linestyle='-',
                    label=f"{MECHANISM_DISPLAY_NAMES[mechanism]}")
             
             # Add confidence intervals with transparency
@@ -260,14 +265,17 @@ def plot_p2p_price_convergence(data_by_mechanism, comparison_mode="mechanism", d
                 hatch=None
             )
     
-    # Configure plot
-    ax.set_xlabel('Learning Iterations', fontsize=10)
-    ax.set_ylabel('Normalized P2P Price', fontsize=10)
-    ax.grid(True, alpha=0.3, linestyle='--')
-    ax.tick_params(axis='both', labelsize=8)
-    
-    # Position legend in upper right corner - better for IEEE paper
-    ax.legend(fontsize=8, loc='upper left')
+    # Apply standardized publication styling with borders
+    apply_publication_style(ax, add_borders=True)
+
+    # Configure plot with standardized font sizes
+    ax.set_xlabel('Learning Iterations', fontsize=PUBLICATION_SETTINGS['axis_label_fontsize'])
+    ax.set_ylabel('Normalized P2P Price', fontsize=PUBLICATION_SETTINGS['axis_label_fontsize'])
+
+    # Configure legend with standardized settings
+    ax.legend(fontsize=PUBLICATION_SETTINGS['legend_fontsize'], loc='upper left',
+              framealpha=PUBLICATION_SETTINGS['legend_framealpha'],
+              edgecolor=PUBLICATION_SETTINGS['legend_edgecolor'])
     
     plt.tight_layout()
     
@@ -383,7 +391,8 @@ def _plot_temperature_algorithms(fig, ax, hours, comfort_min, comfort_max, ddpg_
                 indoor_temp = indoor_temp + deviation * np.sin(np.pi * (hours - 6) / 6)
         
         # Plot temperature line
-        ax.plot(hours, indoor_temp, linestyle='-', color=data['color'], linewidth=2.0,
+        ax.plot(hours, indoor_temp, linestyle='-', color=data['color'],
+               linewidth=PUBLICATION_SETTINGS['line_width'],
                label=f"{ALGORITHM_NAMES[algorithm]} Control")
         
         # Highlight comfort zone violations
@@ -393,14 +402,20 @@ def _plot_temperature_algorithms(fig, ax, hours, comfort_min, comfort_max, ddpg_
             violation_y = indoor_temp[violations]
             ax.scatter(violation_x, violation_y, color=data['color'], s=8, alpha=0.4)
     
-    # Configure plot
-    ax.set_xlabel('Hour of Day', fontsize=10)
-    ax.set_ylabel('Temperature (°C)', fontsize=10)
+    # Apply standardized publication styling with borders
+    apply_publication_style(ax, add_borders=True)
+
+    # Configure plot with standardized font sizes
+    ax.set_xlabel('Hour of Day', fontsize=PUBLICATION_SETTINGS['axis_label_fontsize'])
+    ax.set_ylabel('Temperature (°C)', fontsize=PUBLICATION_SETTINGS['axis_label_fontsize'])
     ax.set_xlim(0, 24)
     ax.set_xticks(np.arange(0, 25, 6))
-    ax.tick_params(axis='both', labelsize=8)
-    ax.legend(fontsize=6, bbox_to_anchor=(0.58, 0.34), framealpha=0.5, edgecolor='gray')
-    ax.grid(False)
+
+    # Configure legend with standardized settings
+    ax.legend(fontsize=PUBLICATION_SETTINGS['legend_fontsize'],
+              bbox_to_anchor=(0.98, 0.98), loc='upper right',
+              framealpha=PUBLICATION_SETTINGS['legend_framealpha'],
+              edgecolor=PUBLICATION_SETTINGS['legend_edgecolor'])
     
     plt.tight_layout()
     
@@ -509,8 +524,8 @@ def _plot_p2p_algorithms(fig, ax, ddpg_runs_dir, dqn_runs_dir, max_episodes):
             smoothed_episodes = episodes
         
         # Plot the curve
-        ax.plot(smoothed_episodes, smoothed_prices, 
-               color=alg_data['color'], linewidth=1.5, linestyle='-',
+        ax.plot(smoothed_episodes, smoothed_prices,
+               color=alg_data['color'], linewidth=PUBLICATION_SETTINGS['line_width'], linestyle='-',
                label=f"{ALGORITHM_NAMES[algorithm_name]}")
         
         # Add confidence intervals
@@ -525,12 +540,17 @@ def _plot_p2p_algorithms(fig, ax, ddpg_runs_dir, dqn_runs_dir, max_episodes):
         print(f"Plotted {algorithm_name.upper()}: {len(price_arrays)} runs, "
               f"{common_episodes} episodes, smoothed with window={window_size}")
     
-    # Configure plot
-    ax.set_xlabel('Learning Iterations', fontsize=10)
-    ax.set_ylabel('Normalized P2P Price', fontsize=10)
-    ax.grid(True, alpha=0.3, linestyle='--')
-    ax.tick_params(axis='both', labelsize=8)
-    ax.legend(fontsize=8, loc='upper right')
+    # Apply standardized publication styling with borders
+    apply_publication_style(ax, add_borders=True)
+
+    # Configure plot with standardized font sizes
+    ax.set_xlabel('Learning Iterations', fontsize=PUBLICATION_SETTINGS['axis_label_fontsize'])
+    ax.set_ylabel('Normalized P2P Price', fontsize=PUBLICATION_SETTINGS['axis_label_fontsize'])
+
+    # Configure legend with standardized settings
+    ax.legend(fontsize=PUBLICATION_SETTINGS['legend_fontsize'], loc='upper right',
+              framealpha=PUBLICATION_SETTINGS['legend_framealpha'],
+              edgecolor=PUBLICATION_SETTINGS['legend_edgecolor'])
     
     plt.tight_layout()
     
@@ -556,7 +576,8 @@ def plot_p2p_final_comparison_bar(ddpg_runs_dir="runs", dqn_runs_dir="dqn_runs")
     from energy_analysis.config import MECHANISM_DISPLAY_NAMES
     from energy_analysis.utils import classify_runs_by_mechanism
     
-    fig, ax = plt.subplots(figsize=(12, 7), dpi=600)
+    fig, ax = plt.subplots(figsize=PUBLICATION_SETTINGS['bar_chart_size'],
+                          dpi=PUBLICATION_SETTINGS['standard_dpi'])
     
     # Get mechanism classification
     runs_by_mechanism = classify_runs_by_mechanism()
@@ -679,43 +700,41 @@ def plot_p2p_final_comparison_bar(ddpg_runs_dir="runs", dqn_runs_dir="dqn_runs")
     
     bars1 = ax.bar(x - width/2, ddpg_values, width,
                    color=ALGORITHM_COLORS['ddpg'], alpha=0.9, label='DDPG',
-                   edgecolor='black', linewidth=1.5)
-    
+                   edgecolor='black', linewidth=PUBLICATION_SETTINGS['spine_linewidth'])
+
     bars2 = ax.bar(x + width/2, dqn_values, width,
-                   color=ALGORITHM_COLORS['dqn'], alpha=0.9, label='DQN', 
-                   edgecolor='black', linewidth=1.5)
+                   color=ALGORITHM_COLORS['dqn'], alpha=0.9, label='DQN',
+                   edgecolor='black', linewidth=PUBLICATION_SETTINGS['spine_linewidth'])
     
-    # Add value labels on bars (remove potential double T issue)
+    # Add value labels on bars with standardized font size
     for bar, value in zip(bars1, ddpg_values):
         height = bar.get_height()
         ax.text(bar.get_x() + bar.get_width()/2., height + 0.005,
-                f'{value:.3f}', ha='center', va='bottom', 
-                fontsize=12, fontweight='bold')
-    
+                f'{value:.3f}', ha='center', va='bottom',
+                fontsize=PUBLICATION_SETTINGS['tick_label_fontsize'], fontweight='bold')
+
     for bar, value in zip(bars2, dqn_values):
         height = bar.get_height()
         ax.text(bar.get_x() + bar.get_width()/2., height + 0.005,
-                f'{value:.3f}', ha='center', va='bottom', 
-                fontsize=12, fontweight='bold')
+                f'{value:.3f}', ha='center', va='bottom',
+                fontsize=PUBLICATION_SETTINGS['tick_label_fontsize'], fontweight='bold')
     
-    # Configure plot
-    ax.set_ylabel('Normalized P2P Price', fontsize=16, fontweight='bold')
-    ax.set_xlabel('Anti-Cartel Mechanism', fontsize=16, fontweight='bold')
+    # Apply standardized publication styling with borders
+    apply_publication_style(ax, add_borders=True)
+
+    # Configure plot with standardized font sizes
+    ax.set_ylabel('Normalized P2P Price', fontsize=PUBLICATION_SETTINGS['axis_label_fontsize'], fontweight='bold')
+    ax.set_xlabel('Anti-Cartel Mechanism', fontsize=PUBLICATION_SETTINGS['axis_label_fontsize'], fontweight='bold')
     ax.set_xticks(x)
     ax.set_xticklabels(mechanism_labels)
     ax.set_ylim(0.15, 0.45)  # Zoom in on relevant data range for better visibility
-    
-    # Add legend
-    ax.legend(fontsize=14, loc='upper right')
-    
-    # Add grid for better readability
-    ax.grid(True, alpha=0.3, linestyle='--', axis='y')
-    ax.set_axisbelow(True)
-    
-    # Customize appearance
-    ax.tick_params(axis='both', labelsize=14)
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
+
+    # Add legend with standardized settings
+    ax.legend(fontsize=PUBLICATION_SETTINGS['legend_fontsize'], loc='upper right',
+              framealpha=PUBLICATION_SETTINGS['legend_framealpha'],
+              edgecolor=PUBLICATION_SETTINGS['legend_edgecolor'])
+
+    # Grid already configured by apply_publication_style
     
     plt.tight_layout()
     
