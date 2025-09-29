@@ -412,13 +412,16 @@ def _plot_temperature_algorithms(fig, ax, hours, comfort_min, comfort_max, ddpg_
             violation_y = indoor_temp[violations]
             ax.scatter(violation_x, violation_y, color=data['color'], s=8, alpha=0.4)
 
-    # Plot outdoor temperature on right axis
-    ax2.plot(hours, outdoor_temp, linestyle='--', color='gray',
-            linewidth=PUBLICATION_SETTINGS['line_width'], label='Outdoor Temperature')
-
-    # Apply standardized publication styling with borders to both axes
+    # Apply publication styling with borders to left axis
     apply_publication_style(ax, add_borders=True)
-    apply_publication_style(ax2, add_borders=True)
+
+    # Configure right axis with borders but NO GRID
+    for spine in ax2.spines.values():
+        spine.set_linewidth(PUBLICATION_SETTINGS['spine_linewidth'])
+        spine.set_color(PUBLICATION_SETTINGS['spine_color'])
+        spine.set_visible(True)
+    ax2.tick_params(axis='both', labelsize=PUBLICATION_SETTINGS['tick_label_fontsize'])
+    ax2.grid(False)  # Explicitly turn off grid on right axis
 
     # Configure left axis (Indoor Temperature) with zoom to 16-25°C
     ax.set_xlabel('Hour of Day', fontsize=PUBLICATION_SETTINGS['axis_label_fontsize'])
@@ -427,19 +430,15 @@ def _plot_temperature_algorithms(fig, ax, hours, comfort_min, comfort_max, ddpg_
     ax.set_xticks(np.arange(0, 25, 6))
     ax.set_ylim(16, 25)  # Zoom to 16-25°C
 
-    # Configure right axis (Outdoor Temperature)
+    # Configure right axis (Outdoor Temperature) - keep axis but no data plotted
     ax2.set_ylabel('Outdoor Temperature (°C)', fontsize=PUBLICATION_SETTINGS['axis_label_fontsize'],
                   color='gray')
     ax2.tick_params(axis='y', colors='gray')
     ax2.set_ylim(min(outdoor_temp) * 0.9, max(outdoor_temp) * 1.1)
 
-    # Combine legends from both axes
-    lines1, labels1 = ax.get_legend_handles_labels()
-    lines2, labels2 = ax2.get_legend_handles_labels()
-
-    ax.legend(lines1 + lines2, labels1 + labels2,
-              fontsize=PUBLICATION_SETTINGS['legend_fontsize'],
-              bbox_to_anchor=(0.98, 0.98), loc='upper right',
+    # Configure legend in top left corner
+    ax.legend(fontsize=PUBLICATION_SETTINGS['legend_fontsize'],
+              loc='upper left',
               framealpha=PUBLICATION_SETTINGS['legend_framealpha'],
               edgecolor=PUBLICATION_SETTINGS['legend_edgecolor'])
     

@@ -129,7 +129,7 @@ def main():
     """
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description='Energy Mechanism Analysis Tool')
-    parser.add_argument('--mode', choices=['mechanism', 'algorithm'], default='mechanism',
+    parser.add_argument('--mode', choices=['mechanism', 'algorithm'], default='algorithm',
                        help='Comparison mode: mechanism (default) or algorithm')
     parser.add_argument('--ddpg-dir', default='runs',
                        help='Directory containing DDPG runs (default: runs)')
