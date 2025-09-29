@@ -54,13 +54,13 @@ def plot_temperature_comfort_zone(data_by_mechanism, comparison_mode="mechanism"
     
     # Plot comfort zone as a shaded area
     ax.axhspan(comfort_min, comfort_max, alpha=0.2, color='green', label='Comfort Zone')
-    
-    # Plot outdoor temperature
-    ax.plot(hours, outdoor_temp, linestyle='--', color='gray', linewidth=1.5, label='Outdoor Temperature')
-    
+
     if comparison_mode == "algorithm":
-        # Algorithm comparison mode
+        # Algorithm comparison mode - outdoor temperature will be plotted on right axis
         return _plot_temperature_algorithms(fig, ax, hours, comfort_min, comfort_max, ddpg_runs_dir, dqn_runs_dir)
+
+    # Plot outdoor temperature only for mechanism mode
+    ax.plot(hours, outdoor_temp, linestyle='--', color='gray', linewidth=1.5, label='Outdoor Temperature')
     
     # Default mechanism comparison mode
     # Plot temperature control for each mechanism
@@ -290,8 +290,8 @@ def plot_p2p_price_convergence(data_by_mechanism, comparison_mode="mechanism", d
 
 def _plot_temperature_algorithms(fig, ax, hours, comfort_min, comfort_max, ddpg_runs_dir, dqn_runs_dir):
     """
-    Create algorithm comparison version of temperature comfort zone plot.
-    
+    Create algorithm comparison version of temperature comfort zone plot with dual y-axes.
+
     Args:
         fig: Matplotlib figure object
         ax: Axis object
@@ -300,10 +300,20 @@ def _plot_temperature_algorithms(fig, ax, hours, comfort_min, comfort_max, ddpg_
         comfort_max: Maximum comfort temperature
         ddpg_runs_dir (str): DDPG runs directory
         dqn_runs_dir (str): DQN runs directory
-        
+
     Returns:
         str: Path to saved figure
     """
+    # Create second y-axis for outdoor temperature
+    ax2 = ax.twinx()
+
+    # Generate outdoor temperature data (same as before)
+    outdoor_temp = 12 + 8 * np.sin(np.pi * (hours - 3) / 12)
+    # Add some realism with temperature fluctuations
+    np.random.seed(42)  # For reproducibility
+    noise = np.random.normal(0, 0.3, len(hours))
+    outdoor_temp += noise
+
     # Try to load temperature data for DQN (DDPG doesn't have temperature data)
     dqn_temps = load_algorithm_data(dqn_runs_dir, "temperatures", "dqn")
     
@@ -390,29 +400,45 @@ def _plot_temperature_algorithms(fig, ax, hours, comfort_min, comfort_max, ddpg_
                 deviation = 0.05 * (comfort_max - comfort_min)
                 indoor_temp = indoor_temp + deviation * np.sin(np.pi * (hours - 6) / 6)
         
-        # Plot temperature line
+        # Plot temperature line on left axis
         ax.plot(hours, indoor_temp, linestyle='-', color=data['color'],
                linewidth=PUBLICATION_SETTINGS['line_width'],
                label=f"{ALGORITHM_NAMES[algorithm]} Control")
-        
+
         # Highlight comfort zone violations
         violations = np.logical_or(indoor_temp < comfort_min, indoor_temp > comfort_max)
         if np.any(violations):
             violation_x = hours[violations]
             violation_y = indoor_temp[violations]
             ax.scatter(violation_x, violation_y, color=data['color'], s=8, alpha=0.4)
-    
-    # Apply standardized publication styling with borders
-    apply_publication_style(ax, add_borders=True)
 
-    # Configure plot with standardized font sizes
+    # Plot outdoor temperature on right axis
+    ax2.plot(hours, outdoor_temp, linestyle='--', color='gray',
+            linewidth=PUBLICATION_SETTINGS['line_width'], label='Outdoor Temperature')
+
+    # Apply standardized publication styling with borders to both axes
+    apply_publication_style(ax, add_borders=True)
+    apply_publication_style(ax2, add_borders=True)
+
+    # Configure left axis (Indoor Temperature) with zoom to 16-25°C
     ax.set_xlabel('Hour of Day', fontsize=PUBLICATION_SETTINGS['axis_label_fontsize'])
     ax.set_ylabel('Temperature (°C)', fontsize=PUBLICATION_SETTINGS['axis_label_fontsize'])
     ax.set_xlim(0, 24)
     ax.set_xticks(np.arange(0, 25, 6))
+    ax.set_ylim(16, 25)  # Zoom to 16-25°C
 
-    # Configure legend with standardized settings
-    ax.legend(fontsize=PUBLICATION_SETTINGS['legend_fontsize'],
+    # Configure right axis (Outdoor Temperature)
+    ax2.set_ylabel('Outdoor Temperature (°C)', fontsize=PUBLICATION_SETTINGS['axis_label_fontsize'],
+                  color='gray')
+    ax2.tick_params(axis='y', colors='gray')
+    ax2.set_ylim(min(outdoor_temp) * 0.9, max(outdoor_temp) * 1.1)
+
+    # Combine legends from both axes
+    lines1, labels1 = ax.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+
+    ax.legend(lines1 + lines2, labels1 + labels2,
+              fontsize=PUBLICATION_SETTINGS['legend_fontsize'],
               bbox_to_anchor=(0.98, 0.98), loc='upper right',
               framealpha=PUBLICATION_SETTINGS['legend_framealpha'],
               edgecolor=PUBLICATION_SETTINGS['legend_edgecolor'])
