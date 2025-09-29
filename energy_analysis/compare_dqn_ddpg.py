@@ -46,7 +46,7 @@ ALGORITHM_NAMES = {
 }
 
 # Moving average window for smoothing
-SMOOTHING_WINDOW = 100
+SMOOTHING_WINDOW = 300
 
 # Output settings
 PLOTS_OUTPUT_DIR = "energy_analysis/ieee_plots"
@@ -220,7 +220,6 @@ def plot_algorithm_rewards_comparison(ddpg_rewards, dqn_rewards):
     # Configure plot appearance
     ax.set_xlabel('Episode', fontsize=14, fontweight='bold')
     ax.set_ylabel('Average Reward', fontsize=14, fontweight='bold')
-    ax.set_title('DQN vs DDPG Learning Performance Comparison', fontsize=16, fontweight='bold')
     
     # Add grid
     ax.grid(True, alpha=0.3, linestyle='--', linewidth=1.0)

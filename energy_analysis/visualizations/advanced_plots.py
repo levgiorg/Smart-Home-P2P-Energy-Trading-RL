@@ -701,7 +701,6 @@ def plot_p2p_final_comparison_bar(ddpg_runs_dir="runs", dqn_runs_dir="dqn_runs")
     # Configure plot
     ax.set_ylabel('Normalized P2P Price', fontsize=16, fontweight='bold')
     ax.set_xlabel('Anti-Cartel Mechanism', fontsize=16, fontweight='bold')
-    ax.set_title('Final P2P Price Convergence by Mechanism and Algorithm', fontsize=18, fontweight='bold')
     ax.set_xticks(x)
     ax.set_xticklabels(mechanism_labels)
     ax.set_ylim(0.15, 0.45)  # Zoom in on relevant data range for better visibility
