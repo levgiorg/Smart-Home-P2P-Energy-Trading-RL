@@ -26,3 +26,4 @@ ddpg_runs/
 dqn_runs/
 energy_analysis/ieee_*
 *.sh
+energy_analysis/
