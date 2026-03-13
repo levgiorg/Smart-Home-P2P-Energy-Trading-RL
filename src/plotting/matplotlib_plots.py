@@ -2,6 +2,7 @@ from __future__ import annotations
 
 """Quick-look matplotlib plots using the same SupBlue/SupRed/SupGreen palette."""
 
+import json
 from pathlib import Path
 
 import matplotlib
@@ -99,6 +100,96 @@ def plot_bar_comparison(
     if output_path:
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(output_path)
+    plt.close(fig)
+
+
+def plot_run_reward_curve(
+    metrics_csv: str | Path,
+    output_path: str | Path,
+    agent: str = "",
+    mechanism: str = "",
+) -> None:
+    """Plot episode reward and rolling mean from a single run's metrics.csv.
+
+    Saves reward_curve.png to output_path.
+    """
+    df = pd.read_csv(metrics_csv)
+    episodes = df["episode"].to_numpy()
+    rewards = df["reward"].to_numpy()
+    mean_100 = df["mean_100"].to_numpy()
+
+    color_raw = COLORS.get(AGENT_COLORS.get(agent.lower(), "SupBlue"), (0.24, 0.46, 0.71))
+    color_mean = COLORS.get("SupOrange", (0.93, 0.55, 0.14))
+
+    fig, ax = plt.subplots(figsize=(7.0, 3.8))
+    ax.plot(episodes, rewards, color=color_raw, alpha=0.45, linewidth=1.0, label="Episode reward")
+    ax.plot(episodes, mean_100, color=color_mean, linewidth=2.0, label="Mean (last 100)")
+
+    title_parts = [p for p in [agent.upper(), mechanism] if p]
+    if title_parts:
+        ax.set_title(" | ".join(title_parts), fontsize=10)
+
+    ax.set_xlabel("Episode")
+    ax.set_ylabel("Reward")
+    ax.legend()
+    ax.grid(True, linestyle=":", alpha=0.5)
+    fig.tight_layout()
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path)
+    plt.close(fig)
+
+
+def plot_run_loss_curve(
+    training_log_jsonl: str | Path,
+    output_path: str | Path,
+    agent: str = "",
+) -> None:
+    """Plot actor/critic/entropy losses from a single run's training_log.jsonl.
+
+    Only generates the file if the log contains loss keys. Silently skips if empty.
+    """
+    records = []
+    try:
+        with open(training_log_jsonl) as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    records.append(json.loads(line))
+    except FileNotFoundError:
+        return
+
+    if not records:
+        return
+
+    df = pd.DataFrame(records)
+    loss_cols = [c for c in df.columns if c.endswith("_loss") or c == "alpha"]
+    if not loss_cols:
+        return
+
+    palette_keys = ["SupBlue", "SupRed", "SupGreen", "SupOrange", "SupGray"]
+    fig, ax = plt.subplots(figsize=(7.0, 3.8))
+
+    for i, col in enumerate(loss_cols):
+        color = COLORS.get(palette_keys[i % len(palette_keys)], (0.5, 0.5, 0.5))
+        ax.plot(
+            df.index.to_numpy(),
+            df[col].to_numpy(),
+            color=color,
+            linewidth=1.0,
+            alpha=0.8,
+            label=col.replace("_", " ").title(),
+        )
+
+    if agent:
+        ax.set_title(f"{agent.upper()} — Training Losses", fontsize=10)
+
+    ax.set_xlabel("Update step")
+    ax.set_ylabel("Loss")
+    ax.legend()
+    ax.grid(True, linestyle=":", alpha=0.5)
+    fig.tight_layout()
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path)
     plt.close(fig)
 
 

@@ -6,7 +6,6 @@ import json
 import logging
 import platform
 import subprocess
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -20,12 +19,34 @@ class RunVersioner:
         self.results_dir = Path(results_dir)
 
     def create_run_dir(self, config: Any) -> Path:
-        """Create timestamped run directory."""
-        ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        """Create sequentially numbered run directory.
+
+        Format: run_NNN_<agent>_<mechanism>_seed<seed>
+        The counter is derived from existing run_NNN_* directories in results_dir,
+        ensuring a monotonically increasing, human-readable name.
+        """
+        self.results_dir.mkdir(parents=True, exist_ok=True)
+
         agent = getattr(config, "agent", "unknown")
         mechanism = getattr(getattr(config, "market", None), "mechanism_type", "none") or "none"
         seed = getattr(config, "seed", 0)
-        name = f"{agent}_{mechanism}_seed{seed}_{ts}"
+
+        # Determine next run number from existing run_NNN_* directories
+        existing = [
+            d.name
+            for d in self.results_dir.iterdir()
+            if d.is_dir()
+            and d.name.startswith("run_")
+            and len(d.name) > 4
+            and d.name[4:7].isdigit()
+        ]
+        if existing:
+            last = max(int(n[4:7]) for n in existing)
+            run_num = last + 1
+        else:
+            run_num = 1
+
+        name = f"run_{run_num:03d}_{agent}_{mechanism}_seed{seed}"
         run_dir = self.results_dir / name
         run_dir.mkdir(parents=True, exist_ok=True)
         return run_dir

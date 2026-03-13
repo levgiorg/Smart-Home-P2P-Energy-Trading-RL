@@ -97,7 +97,7 @@ class Trainer:
                     )
                     self._metrics_file.flush()
 
-                if episode % 50 == 0:
+                if episode % 5 == 0:
                     logger.info(
                         "Episode %d | reward=%.2f | mean_100=%.2f", episode, ep_reward, mean_100
                     )
@@ -106,8 +106,39 @@ class Trainer:
             if self.run_dir:
                 self.agent.save(str(self.run_dir / "model_final.pt"))
             self._close_logfiles()
+            if self.run_dir:
+                self._generate_plots()
 
         return result
+
+    def _generate_plots(self) -> None:
+        """Produce reward_curve.png and loss_curve.png in the run directory."""
+        try:
+            from ..plotting.matplotlib_plots import plot_run_loss_curve, plot_run_reward_curve
+
+            agent_name = getattr(self.config, "agent", "")
+            mechanism = getattr(getattr(self.config, "market", None), "mechanism_type", "") or ""
+
+            metrics_csv = self.run_dir / "metrics.csv"
+            if metrics_csv.exists():
+                plot_run_reward_curve(
+                    metrics_csv=metrics_csv,
+                    output_path=self.run_dir / "reward_curve.png",
+                    agent=agent_name,
+                    mechanism=mechanism,
+                )
+                logger.info("Saved reward_curve.png")
+
+            training_log = self.run_dir / "training_log.jsonl"
+            if training_log.exists():
+                plot_run_loss_curve(
+                    training_log_jsonl=training_log,
+                    output_path=self.run_dir / "loss_curve.png",
+                    agent=agent_name,
+                )
+                logger.info("Saved loss_curve.png")
+        except Exception as exc:
+            logger.warning("Plot generation failed: %s", exc)
 
     def _run_episode(self, result: TrainingResult, episode: int) -> float:
         state = self.env.reset()

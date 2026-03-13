@@ -192,7 +192,8 @@ class AntiCartelMechanism:
                 # Check for suspicious patterns
 
                 # Pattern 1: Nearly identical prices
-                if abs(mean_i - mean_j) / max(mean_i, mean_j) < self.price_band_threshold:
+                denom = max(mean_i, mean_j)
+                if denom == 0 or abs(mean_i - mean_j) / denom < self.price_band_threshold:
                     price_matching_penalty = self.penalty_factor * 0.5
                     penalties[i] += price_matching_penalty * selling_prices[i]
                     penalties[j] += price_matching_penalty * selling_prices[j]
