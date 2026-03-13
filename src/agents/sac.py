@@ -122,6 +122,7 @@ class SACAgent(BaseAgent):
         num_houses: int = 10,
         state_dim_per_house: int = 17,
         action_dim_per_house: int = 3,
+        **_,
     ) -> None:
         self.num_houses = num_houses
         self.sdph = state_dim_per_house

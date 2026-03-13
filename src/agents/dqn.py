@@ -139,12 +139,17 @@ class DQNAgent(BaseAgent):
     def __init__(
         self,
         state_dim: int,
-        action_bounds: dict,
+        action_dim: int,
         config: DQNConfig,
+        action_bounds: dict | None = None,
         num_houses: int = 10,
         state_dim_per_house: int = 17,
         action_dim_per_house: int = 3,
     ) -> None:
+        if action_bounds is None:
+            raise ValueError(
+                "DQNAgent requires action_bounds dict — pass action_bounds=env.action_bounds"
+            )
         self.num_houses = num_houses
         self.sdph = state_dim_per_house
         self.adph = action_dim_per_house

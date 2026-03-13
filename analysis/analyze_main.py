@@ -1,3 +1,8 @@
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent))
+
 import matplotlib.pyplot as plt
 from cartel_analyzer import AntiCartelAnalyzer
 from enhanced_analyzer import EnhancedRunAnalyzer

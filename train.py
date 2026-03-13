@@ -75,6 +75,7 @@ def main() -> None:
         state_dim=env.state_dim,
         action_dim=env.action_dim,
         config=agent_cfg,
+        action_bounds=env.action_bounds,
         num_houses=env.num_houses,
         state_dim_per_house=config.env.state_dim_per_house,
         action_dim_per_house=config.env.action_dim_per_house,

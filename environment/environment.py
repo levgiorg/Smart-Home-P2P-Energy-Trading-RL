@@ -6,7 +6,6 @@ import pandas as pd
 import torch
 
 from hyperparameters import Config
-from utilities import Utilities
 
 from .anti_cartel import AntiCartelMechanism
 
@@ -45,7 +44,9 @@ class Environment:
         self.eval = eval_mode
         self.dynamic = dynamic
         self.num_houses = self.config.get("environment", "num_houses")
-        self.utilities = Utilities(num_houses=self.num_houses)
+        self._max_hvac = self.config.get("environment", "max_energy_consumption")
+        self._charge_rate = self.config.get("environment", "battery_charging_max_rate")
+        self._discharge_rate = self.config.get("environment", "battery_discharging_max_rate")
         self.anti_cartel = AntiCartelMechanism()
 
         # Define state components with descriptive functions
@@ -311,7 +312,7 @@ class Environment:
             infos: Dictionary containing additional information about the step
         """
         # Convert actions from normalized space to actual values
-        actions = self.utilities.unscaler(actions)
+        actions = self._unscale_actions(actions)
 
         # Initialize tracking dictionaries for various metrics
         infos = self._initialize_info_tracking()
@@ -342,6 +343,22 @@ class Environment:
             self._update_dynamic_variables()
 
         return self._get_state(), rewards, self.done, infos
+
+    def _unscale_actions(self, actions: torch.Tensor) -> torch.Tensor:
+        """Unscale actions from normalized [-1, 1] space to physical values.
+
+        Expects shape [num_houses, 3]: (hvac_energy, battery_action, selling_price).
+        """
+        if actions.dim() == 2 and actions.size(0) == 1 and actions.size(1) == 3 * self.num_houses:
+            actions = actions.view(self.num_houses, 3)
+
+        hvac = actions[:, 0] * self._max_hvac
+        battery = (
+            -self._discharge_rate
+            + (actions[:, 1] + 1.0) * (self._charge_rate + self._discharge_rate) / 2.0
+        )
+        price = actions[:, 2]
+        return torch.stack([hvac, battery, price], dim=1)
 
     def _initialize_info_tracking(self) -> dict[str, Any]:
         """
