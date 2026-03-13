@@ -3,15 +3,13 @@ from __future__ import annotations
 """TikZ/pgfplots export engine for publication-ready figures."""
 
 from pathlib import Path
-from typing import Any
 
-import numpy as np
 import pandas as pd
 
-from .palette import AGENT_COLORS, AGENT_MARKERS, COLORS, TIKZ_COLORS
+from .palette import AGENT_COLORS, AGENT_MARKERS
 from .templates import (
-    BAR_CHART_TEMPLATE,
     BAND_LAYER_TEMPLATE,
+    BAR_CHART_TEMPLATE,
     CONVERGENCE_TEMPLATE,
     HEATMAP_TEMPLATE,
     PREAMBLE,
@@ -99,13 +97,10 @@ class TikZExporter:
         bars = ""
         for agent, agent_data in data.items():
             color = self.agent_colors.get(agent, "SupGray")
-            coords_str = " ".join(
-                f"({m},{agent_data.get(m, 0):.4f})" for m in metrics
-            )
-            err_coords = ""
             if errors and agent in errors:
-                err_coords = " ".join(
-                    f"({m},{errors[agent].get(m, 0):.4f})" for m in metrics
+                coords_str = " ".join(
+                    f"({m},{agent_data.get(m, 0):.4f}) +- (0,{errors[agent].get(m, 0):.4f})"
+                    for m in metrics
                 )
                 bars += (
                     f"      \\addplot [{color}, error bars/.cd, y dir=both, y explicit]\n"
@@ -113,6 +108,7 @@ class TikZExporter:
                     f"      \\addlegendentry{{{agent.upper()}}};\n"
                 )
             else:
+                coords_str = " ".join(f"({m},{agent_data.get(m, 0):.4f})" for m in metrics)
                 bars += (
                     f"      \\addplot [{color}] coordinates {{ {coords_str} }};\n"
                     f"      \\addlegendentry{{{agent.upper()}}};\n"

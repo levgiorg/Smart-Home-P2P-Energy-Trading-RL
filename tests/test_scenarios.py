@@ -1,6 +1,8 @@
 """Tests for stress scenarios."""
+
 import pytest
-from src.environment.scenarios import StressScenario, SCENARIOS
+
+from src.environment.scenarios import SCENARIOS, StressScenario
 
 
 def test_scenarios_dict_keys():

@@ -35,9 +35,9 @@ AGENT_COLORS: dict[str, str] = {
 }
 
 AGENT_MARKERS: dict[str, str] = {
-    "sac": "s",   # square
-    "td3": "^",   # triangle
+    "sac": "s",  # square
+    "td3": "^",  # triangle
     "ddpg": "D",  # diamond
-    "ppo": "o",   # circle
-    "dqn": "x",   # x
+    "ppo": "o",  # circle
+    "dqn": "x",  # x
 }

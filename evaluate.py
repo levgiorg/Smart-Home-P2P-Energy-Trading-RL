@@ -4,6 +4,7 @@ Usage:
     python evaluate.py --checkpoint results/sac_detection_seed42_*/model_final.pt --scenarios all
     python evaluate.py --checkpoint results/run/model_final.pt --scenarios normal,price_spike
 """
+
 from __future__ import annotations
 
 import argparse
@@ -30,13 +31,13 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
-    from src.config.experiment import ExperimentConfig
+    from src.agents import create_agent
     from src.config.base import MarketConfig
-    from src.utilities.seeding import set_all_seeds
+    from src.config.experiment import ExperimentConfig
     from src.environment.energy_env import EnergyEnv
     from src.environment.scenarios import SCENARIOS
-    from src.agents import create_agent
     from src.evaluation.evaluator import Evaluator
+    from src.utilities.seeding import set_all_seeds
 
     set_all_seeds(args.seed)
 
@@ -67,7 +68,9 @@ def main() -> None:
 
     evaluator = Evaluator(agent, env)
 
-    scenario_names = list(SCENARIOS.keys()) if args.scenarios == "all" else args.scenarios.split(",")
+    scenario_names = (
+        list(SCENARIOS.keys()) if args.scenarios == "all" else args.scenarios.split(",")
+    )
     scenarios = {name: SCENARIOS[name] for name in scenario_names if name in SCENARIOS}
 
     results = evaluator.evaluate_scenarios(scenarios, episodes=args.episodes)

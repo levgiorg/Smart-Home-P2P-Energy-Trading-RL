@@ -1,0 +1,15 @@
+# Quick test: 2 agents × 1 mechanism × 1 seed × 10 episodes
+matrix:
+  agent: [ddpg, sac]
+  mechanism: [detection]
+  seed: [0]
+
+shared:
+  episodes: 10
+  env:
+    num_houses: 10
+
+gpu:
+  strategy: round_robin
+  devices: [0]
+  max_concurrent: 2

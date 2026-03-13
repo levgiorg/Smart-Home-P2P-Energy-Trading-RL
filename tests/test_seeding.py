@@ -1,5 +1,7 @@
 """Tests for seed management utilities."""
+
 import random
+
 import numpy as np
 import torch
 

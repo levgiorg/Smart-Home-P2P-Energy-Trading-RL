@@ -9,7 +9,7 @@ class StressScenario:
 
     name: str
     price_multiplier: float = 1.0
-    solar_reduction: float = 0.0   # 0.0 = no reduction, 0.8 = 80% reduction
+    solar_reduction: float = 0.0  # 0.0 = no reduction, 0.8 = 80% reduction
     demand_multiplier: float = 1.0
 
 

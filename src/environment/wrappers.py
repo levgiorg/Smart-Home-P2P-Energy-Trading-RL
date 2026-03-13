@@ -11,4 +11,5 @@ from .energy_env import EnergyEnv
 
 class DiscreteActionWrapper(EnergyEnv):
     """Identity wrapper kept for API symmetry; DQNAgent handles discretization internally."""
+
     pass

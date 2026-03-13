@@ -3,10 +3,9 @@ from __future__ import annotations
 """Sensitivity analysis: 1D and 2D parameter sweeps."""
 
 import logging
-from copy import deepcopy
-from itertools import product
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import numpy as np
 
@@ -53,7 +52,9 @@ class ParameterSweep:
                 metric = self.train_fn(params)
                 seed_results.append(metric)
             results[str(v)] = seed_results
-            logger.info("%s=%.4f → mean=%.2f ± %.2f", param, v, np.mean(seed_results), np.std(seed_results))
+            logger.info(
+                "%s=%.4f → mean=%.2f ± %.2f", param, v, np.mean(seed_results), np.std(seed_results)
+            )
 
         return results
 

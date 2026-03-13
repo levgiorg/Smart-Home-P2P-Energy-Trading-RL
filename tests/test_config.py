@@ -1,7 +1,9 @@
 """Tests for Pydantic config system."""
+
 import pytest
-from src.config.base import EnvConfig, MarketConfig, RewardConfig
-from src.config.agent_configs import DDPGConfig, SACConfig, TD3Config, PPOConfig, DQNConfig
+
+from src.config.agent_configs import DDPGConfig, PPOConfig, SACConfig, TD3Config
+from src.config.base import EnvConfig, MarketConfig
 from src.config.experiment import ExperimentConfig
 
 

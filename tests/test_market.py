@@ -1,18 +1,18 @@
 """Tests for market regulators."""
+
 import numpy as np
-import pytest
 
 from src.config.base import MarketConfig
-from src.market.static import StaticRegulator
-from src.market.adaptive import AdaptiveRegulator
 from src.market import create_regulator
-
+from src.market.adaptive import AdaptiveRegulator
+from src.market.static import StaticRegulator
 
 GRID_PRICE = 0.25
 PRICES = [0.18, 0.18, 0.18, 0.19, 0.20, 0.18, 0.19, 0.18, 0.20, 0.19]
 
 
 # ── StaticRegulator / detection ───────────────────────────────────────────────
+
 
 def test_detection_no_penalty_without_history():
     cfg = MarketConfig(mechanism_type="detection")
@@ -34,6 +34,7 @@ def test_detection_penalises_similar_prices():
 
 
 # ── StaticRegulator / ceiling ─────────────────────────────────────────────────
+
 
 def test_ceiling_price():
     cfg = MarketConfig(mechanism_type="ceiling", markup_limit=0.2)
@@ -63,6 +64,7 @@ def test_no_penalty_below_ceiling():
 
 # ── StaticRegulator / null ────────────────────────────────────────────────────
 
+
 def test_null_regulator_no_penalties():
     cfg = MarketConfig(mechanism_type=None)
     reg = StaticRegulator(cfg)
@@ -71,6 +73,7 @@ def test_null_regulator_no_penalties():
 
 
 # ── AdaptiveRegulator ─────────────────────────────────────────────────────────
+
 
 def test_adaptive_threshold_convergence():
     cfg = MarketConfig(mechanism_type="adaptive", rolling_window=10, monitoring_window=30)
@@ -87,6 +90,7 @@ def test_adaptive_threshold_convergence():
 
 
 # ── Factory ───────────────────────────────────────────────────────────────────
+
 
 def test_create_regulator_detection():
     cfg = MarketConfig(mechanism_type="detection")

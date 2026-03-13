@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
-import torch
 
 if TYPE_CHECKING:
     from ..agents.base import BaseAgent
@@ -24,7 +23,7 @@ class Evaluator:
     - Stress-scenario evaluation
     """
 
-    def __init__(self, agent: "BaseAgent", env: "EnergyEnv") -> None:
+    def __init__(self, agent: BaseAgent, env: EnergyEnv) -> None:
         self.agent = agent
         self.env = env
 
@@ -68,7 +67,7 @@ class Evaluator:
 
     def evaluate_scenarios(
         self,
-        scenarios: dict[str, "StressScenario"],
+        scenarios: dict[str, StressScenario],
         episodes: int = 3,
     ) -> dict[str, dict[str, float]]:
         """Evaluate agent under each stress scenario."""
@@ -85,7 +84,9 @@ class Evaluator:
                 "mean": float(np.mean(ep_rewards)),
                 "std": float(np.std(ep_rewards)),
             }
-            logger.info("Scenario %s: mean=%.2f ± %.2f", name, results[name]["mean"], results[name]["std"])
+            logger.info(
+                "Scenario %s: mean=%.2f ± %.2f", name, results[name]["mean"], results[name]["std"]
+            )
 
         self.env._scenario = original_scenario
         return results

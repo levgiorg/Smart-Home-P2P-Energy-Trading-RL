@@ -1,6 +1,6 @@
-from .utilities import Utilities
-from .replay_memory import ReplayMemory
-from .transition import Transition
-from .normalizer import Normalizer
-from .noise import OUNoise
-from .action_discretizer import ActionDiscretizer, create_discretizer_from_config
+from .action_discretizer import (
+    ActionDiscretizer as ActionDiscretizer,
+)
+from .action_discretizer import (
+    create_discretizer_from_config as create_discretizer_from_config,
+)

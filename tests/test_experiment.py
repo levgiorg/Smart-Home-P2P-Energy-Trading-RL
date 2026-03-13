@@ -1,16 +1,16 @@
 """Tests for experiment registry, versioning, and batch matrix expansion."""
+
 import json
-from pathlib import Path
 
 import pytest
 
-from src.config.experiment import ExperimentConfig
 from src.config.base import MarketConfig
+from src.config.experiment import ExperimentConfig
 from src.experiment.registry import ExperimentRegistry
 from src.experiment.versioning import RunVersioner
 
-
 # ── Registry ──────────────────────────────────────────────────────────────────
+
 
 def test_registry_register_and_query(tmp_path):
     reg = ExperimentRegistry(str(tmp_path / "exp.db"))
@@ -27,7 +27,9 @@ def test_registry_update_status(tmp_path):
     reg = ExperimentRegistry(str(tmp_path / "exp.db"))
     cfg = ExperimentConfig(agent="td3", seed=1)
     run_id = reg.register_run(cfg)
-    reg.update_status(run_id, "completed", {"mean_reward": 42.0, "best_reward": 55.0, "total_episodes": 100})
+    reg.update_status(
+        run_id, "completed", {"mean_reward": 42.0, "best_reward": 55.0, "total_episodes": 100}
+    )
 
     runs = reg.list_runs(status="completed")
     assert any(r["run_id"] == run_id for r in runs)
@@ -40,13 +42,16 @@ def test_registry_best_run(tmp_path):
     for seed in range(3):
         cfg = ExperimentConfig(agent="sac", seed=seed)
         run_id = reg.register_run(cfg)
-        reg.update_status(run_id, "completed", {"mean_reward": float(seed * 10), "best_reward": float(seed * 12)})
+        reg.update_status(
+            run_id, "completed", {"mean_reward": float(seed * 10), "best_reward": float(seed * 12)}
+        )
     best = reg.best_run("sac")
     assert best is not None
     assert best["mean_reward"] == pytest.approx(20.0)
 
 
 # ── Versioner ─────────────────────────────────────────────────────────────────
+
 
 def test_versioner_creates_dir(tmp_path):
     versioner = RunVersioner(results_dir=str(tmp_path))
@@ -79,8 +84,10 @@ def test_versioner_summary(tmp_path):
 
 # ── BatchOrchestrator matrix expansion ───────────────────────────────────────
 
+
 def test_batch_matrix_expansion(tmp_path):
     import yaml
+
     config = {
         "matrix": {"agent": ["sac", "td3"], "mechanism": ["detection"], "seed": [0, 1]},
         "shared": {"episodes": 10},
@@ -89,6 +96,7 @@ def test_batch_matrix_expansion(tmp_path):
     cfg_path.write_text(yaml.dump(config))
 
     from src.experiment.batch import BatchOrchestrator
+
     orch = BatchOrchestrator(str(cfg_path), results_dir=str(tmp_path))
     runs = orch.generate_run_matrix()
     assert len(runs) == 4  # 2 agents × 1 mechanism × 2 seeds

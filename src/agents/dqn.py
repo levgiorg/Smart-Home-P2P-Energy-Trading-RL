@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import os
 import random
+
+# Reuse existing DQN networks and action discretizer from the legacy modules
+import sys
 from collections import deque
 
 import numpy as np
@@ -11,15 +15,11 @@ import torch.optim as optim
 from ..config.agent_configs import DQNConfig
 from .base import BaseAgent
 
-# Reuse existing DQN networks and action discretizer from the legacy modules
-import sys
-import os
-
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-from models_code.dqn_networks import DQNNetwork, DoubleDQNNetwork  # noqa: E402
+from models_code.dqn_networks import DoubleDQNNetwork, DQNNetwork  # noqa: E402
 from utilities.action_discretizer import ActionDiscretizer  # noqa: E402
 
 
@@ -43,10 +43,20 @@ class _SingleHouseDQN:
 
         net_cls = DoubleDQNNetwork if self.use_double else DQNNetwork
         self.q_net = net_cls(
-            state_dim, num_actions, config.fc1_dims, config.fc2_dims, config.fc3_dims, device=self.device
+            state_dim,
+            num_actions,
+            config.fc1_dims,
+            config.fc2_dims,
+            config.fc3_dims,
+            device=self.device,
         )
         self.target_net = net_cls(
-            state_dim, num_actions, config.fc1_dims, config.fc2_dims, config.fc3_dims, device=self.device
+            state_dim,
+            num_actions,
+            config.fc1_dims,
+            config.fc2_dims,
+            config.fc3_dims,
+            device=self.device,
         )
         self._hard_update()
 
@@ -56,9 +66,11 @@ class _SingleHouseDQN:
         )
         self.memory: deque = deque(maxlen=config.memory_size)
 
-    def _params(self):
+    def _params(self) -> list[torch.nn.Parameter]:
         if self.use_double:
-            return list(self.q_net.q_network_1.parameters()) + list(self.q_net.q_network_2.parameters())
+            return list(self.q_net.q_network_1.parameters()) + list(
+                self.q_net.q_network_2.parameters()
+            )
         return list(self.q_net.parameters())
 
     def _hard_update(self) -> None:
@@ -69,7 +81,11 @@ class _SingleHouseDQN:
             return self.discretizer.sample_random_action()
         state = state.to(self.device).unsqueeze(0)
         with torch.no_grad():
-            q = self.q_net.forward(state, network="main") if self.use_double else self.q_net.forward(state)
+            q = (
+                self.q_net.forward(state, network="main")
+                if self.use_double
+                else self.q_net.forward(state)
+            )
         return int(torch.argmax(q, dim=1).item())
 
     def update(self) -> dict[str, float] | None:
@@ -89,7 +105,11 @@ class _SingleHouseDQN:
             cur_q = self.q_net.forward(s, network="main").gather(1, a.unsqueeze(1)).squeeze(1)
             with torch.no_grad():
                 next_actions = torch.argmax(self.q_net.forward(ns, network="main"), dim=1)
-                next_q = self.target_net.forward(ns, network="main").gather(1, next_actions.unsqueeze(1)).squeeze(1)
+                next_q = (
+                    self.target_net.forward(ns, network="main")
+                    .gather(1, next_actions.unsqueeze(1))
+                    .squeeze(1)
+                )
         else:
             cur_q = self.q_net.get_action_values(s, a)
             with torch.no_grad():
@@ -132,8 +152,7 @@ class DQNAgent(BaseAgent):
         self._action_bounds = action_bounds
 
         self.agents = [
-            _SingleHouseDQN(state_dim_per_house, action_bounds, config)
-            for _ in range(num_houses)
+            _SingleHouseDQN(state_dim_per_house, action_bounds, config) for _ in range(num_houses)
         ]
 
     def select_action(self, state: torch.Tensor, deterministic: bool = False) -> torch.Tensor:
@@ -160,8 +179,16 @@ class DQNAgent(BaseAgent):
             s = state[i * self.sdph : (i + 1) * self.sdph]
             ns = next_state[i * self.sdph : (i + 1) * self.sdph]
             # Re-discretize continuous action for storage
-            a_cont = action[i].numpy() if action.dim() > 1 else action[i * self.adph : (i + 1) * self.adph].numpy()
-            a_disc = agent.discretizer.continuous_to_discrete(a_cont) if hasattr(agent.discretizer, "continuous_to_discrete") else 0
+            a_cont = (
+                action[i].numpy()
+                if action.dim() > 1
+                else action[i * self.adph : (i + 1) * self.adph].numpy()
+            )
+            a_disc = (
+                agent.discretizer.continuous_to_discrete(a_cont)
+                if hasattr(agent.discretizer, "continuous_to_discrete")
+                else 0
+            )
             r = float(reward[i]) if reward.numel() > 1 else float(reward)
             agent.memory.append((s, a_disc, r, ns, done))
 
@@ -187,7 +214,7 @@ class DQNAgent(BaseAgent):
         torch.save(ckpt, path)
 
     def load(self, path: str) -> None:
-        ckpt = torch.load(path, map_location=self.device)
+        ckpt = torch.load(path, map_location=self.device, weights_only=True)
         for i, agent in enumerate(self.agents):
             agent.q_net.load_state_dict(ckpt[f"agent_{i}_q_net"])
             agent._hard_update()

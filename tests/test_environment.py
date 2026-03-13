@@ -1,7 +1,8 @@
 """Tests for EnergyEnv wrapper: reset, step, shapes, reward sign, scenario injection."""
+
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 import torch
@@ -9,14 +10,13 @@ import torch
 from src.config.base import EnvConfig, MarketConfig
 from src.environment.scenarios import SCENARIOS, StressScenario
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 NUM_HOUSES = 10
-STATE_DIM = 170   # NUM_HOUSES * 17 (7 base + 10 selling prices)
-ACTION_DIM = 30   # NUM_HOUSES * 3
+STATE_DIM = 170  # NUM_HOUSES * 17 (7 base + 10 selling prices)
+ACTION_DIM = 30  # NUM_HOUSES * 3
 
 
 def _make_mock_legacy_env(

@@ -1,0 +1,15 @@
+# Stress test: best agent × 5 scenarios × 5 seeds
+# Update 'agent' to the best performer after full_comparison
+matrix:
+  agent: [sac]
+  mechanism: [detection]
+  seed: [0, 1, 2, 3, 4]
+  scenario: [normal, price_spike, solar_dropout, demand_surge, combined_crisis]
+
+shared:
+  episodes: 500
+
+gpu:
+  strategy: round_robin
+  devices: [0]
+  max_concurrent: 4

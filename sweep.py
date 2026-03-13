@@ -4,6 +4,7 @@ Usage:
     python sweep.py --agent sac --param market.k_p --range 0.5,2.0,0.25 --seeds 3 --episodes 10
     python sweep.py --agent sac --params market.k_p,market.k_v --grid --range 0.5,1.5,0.5 --episodes 10
 """
+
 from __future__ import annotations
 
 import argparse
@@ -20,8 +21,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--agent", default="sac", choices=["ddpg", "sac", "td3", "ppo", "dqn"])
     p.add_argument("--param", default=None, help="Single parameter to sweep (e.g. market.k_p)")
     p.add_argument("--params", default=None, help="Two params for 2D sweep, comma-separated")
-    p.add_argument("--range", dest="param_range", default="0.5,2.0,0.5",
-                   help="start,stop,step for the parameter range")
+    p.add_argument(
+        "--range",
+        dest="param_range",
+        default="0.5,2.0,0.5",
+        help="start,stop,step for the parameter range",
+    )
     p.add_argument("--grid", action="store_true", help="Use grid sweep (2D)")
     p.add_argument("--seeds", type=int, default=1)
     p.add_argument("--episodes", type=int, default=100)
@@ -42,22 +47,26 @@ def _build_train_fn(agent_name: str, mechanism: str, episodes: int):
     """Returns a callable that trains for given params and returns mean reward."""
 
     def train_fn(params: dict) -> float:
-        from src.config.experiment import ExperimentConfig
-        from src.config.base import MarketConfig
-        from src.utilities.seeding import set_all_seeds
-        from src.environment.energy_env import EnergyEnv
         from src.agents import create_agent
+        from src.config.base import MarketConfig
+        from src.config.experiment import ExperimentConfig
+        from src.environment.energy_env import EnergyEnv
         from src.training.trainer import Trainer
+        from src.utilities.seeding import set_all_seeds
 
         seed = int(params.get("seed", 0))
         set_all_seeds(seed)
 
-        market_overrides = {k.replace("market.", ""): v for k, v in params.items() if k.startswith("market.")}
+        market_overrides = {
+            k.replace("market.", ""): v for k, v in params.items() if k.startswith("market.")
+        }
         config = ExperimentConfig(
             agent=agent_name,
             seed=seed,
             num_episodes=episodes,
-            market=MarketConfig(mechanism_type=mechanism if mechanism != "none" else None, **market_overrides),
+            market=MarketConfig(
+                mechanism_type=mechanism if mechanism != "none" else None, **market_overrides
+            ),
         )
 
         env = EnergyEnv(config.env, config.market)
@@ -94,15 +103,23 @@ def main() -> None:
         grid = sweeper.sweep_2d(param_a, values, param_b, values, {}, seeds=args.seeds)
 
         import pandas as pd
-        df = pd.DataFrame(grid, index=[f"{v:.3f}" for v in values], columns=[f"{v:.3f}" for v in values])
-        plot_heatmap(df, xlabel=param_b, ylabel=param_a,
-                     output_path=f"{args.output_dir}/heatmap_{param_a}_{param_b}.png")
+
+        df = pd.DataFrame(
+            grid, index=[f"{v:.3f}" for v in values], columns=[f"{v:.3f}" for v in values]
+        )
+        plot_heatmap(
+            df,
+            xlabel=param_b,
+            ylabel=param_a,
+            output_path=f"{args.output_dir}/heatmap_{param_a}_{param_b}.png",
+        )
         logger.info("2D sweep done. Grid shape: %s", grid.shape)
 
     elif args.param:
         results = sweeper.sweep_1d(args.param, values, {}, seeds=args.seeds)
         import json
         import os
+
         os.makedirs(args.output_dir, exist_ok=True)
         with open(f"{args.output_dir}/sweep_{args.param}.json", "w") as f:
             json.dump(results, f, indent=2)

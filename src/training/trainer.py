@@ -4,10 +4,9 @@ import csv
 import json
 import logging
 from dataclasses import dataclass, field
+from io import TextIOWrapper
 from pathlib import Path
 from typing import TYPE_CHECKING
-
-import torch
 
 if TYPE_CHECKING:
     from ..agents.base import BaseAgent
@@ -45,9 +44,9 @@ class Trainer:
 
     def __init__(
         self,
-        agent: "BaseAgent",
-        env: "EnergyEnv",
-        config: "ExperimentConfig",
+        agent: BaseAgent,
+        env: EnergyEnv,
+        config: ExperimentConfig,
         run_dir: Path | None = None,
     ) -> None:
         self.agent = agent
@@ -55,8 +54,8 @@ class Trainer:
         self.config = config
         self.run_dir = run_dir
         self._metrics_writer: csv.DictWriter | None = None
-        self._metrics_file = None
-        self._log_file = None
+        self._metrics_file: TextIOWrapper | None = None
+        self._log_file: TextIOWrapper | None = None
 
         if run_dir:
             run_dir.mkdir(parents=True, exist_ok=True)

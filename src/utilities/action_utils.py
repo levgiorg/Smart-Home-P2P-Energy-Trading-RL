@@ -31,7 +31,10 @@ class ActionUnscaler:
             actions = actions.unsqueeze(0)
 
         hvac = actions[:, 0] * self.max_hvac
-        battery = -self.discharge_rate + (actions[:, 1] + 1.0) * (self.charge_rate + self.discharge_rate) / 2.0
+        battery = (
+            -self.discharge_rate
+            + (actions[:, 1] + 1.0) * (self.charge_rate + self.discharge_rate) / 2.0
+        )
         price = actions[:, 2]
 
         return torch.stack([hvac, battery, price], dim=1)

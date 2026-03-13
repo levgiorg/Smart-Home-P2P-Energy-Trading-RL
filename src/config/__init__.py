@@ -1,5 +1,5 @@
+from .agent_configs import DDPGConfig, DQNConfig, PPOConfig, SACConfig, TD3Config
 from .base import EnvConfig, MarketConfig, RewardConfig
-from .agent_configs import DDPGConfig, SACConfig, TD3Config, PPOConfig, DQNConfig
 from .experiment import ExperimentConfig
 
 __all__ = [

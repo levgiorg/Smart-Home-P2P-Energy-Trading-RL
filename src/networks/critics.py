@@ -53,7 +53,9 @@ class TwinCritic(nn.Module):
                 if isinstance(layer, nn.Linear):
                     nn.init.xavier_uniform_(layer.weight)
 
-    def forward(self, state: torch.Tensor, action: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(
+        self, state: torch.Tensor, action: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """Return (Q1, Q2) values."""
         sa = torch.cat([state, action], dim=-1)
         return self.q1(sa), self.q2(sa)

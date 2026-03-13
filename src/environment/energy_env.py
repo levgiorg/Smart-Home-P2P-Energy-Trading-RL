@@ -8,8 +8,8 @@ from __future__ import annotations
 The heavy physics / data-loading logic lives in environment/environment.py unchanged.
 """
 
-import sys
 import os
+import sys
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if _PROJECT_ROOT not in sys.path:
@@ -19,6 +19,7 @@ import torch
 
 from ..config.base import EnvConfig, MarketConfig
 from ..market import create_regulator
+from ..market.base import MarketRegulator
 from .scenarios import StressScenario
 
 
@@ -65,7 +66,9 @@ class EnergyEnv:
         next_state, rewards, done, info = self._env.step(actions)
 
         # Update regulator price history
-        selling_prices = actions[:, 2].tolist() if isinstance(actions, torch.Tensor) else [a[2] for a in actions]
+        selling_prices = (
+            actions[:, 2].tolist() if isinstance(actions, torch.Tensor) else [a[2] for a in actions]
+        )
         self._regulator.update(selling_prices, episode_done=done)
 
         next_state_t = torch.tensor(next_state, dtype=torch.float32)
@@ -99,5 +102,5 @@ class EnergyEnv:
         return self._env.num_houses
 
     @property
-    def regulator(self):
+    def regulator(self) -> MarketRegulator:
         return self._regulator

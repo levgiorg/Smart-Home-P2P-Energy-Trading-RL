@@ -5,6 +5,7 @@ Usage:
     python batch_train.py --status
     python batch_train.py --batch experiments/full_comparison.yaml --resume-failed
 """
+
 from __future__ import annotations
 
 import argparse
@@ -33,12 +34,17 @@ def main() -> None:
 
     if args.status:
         from src.experiment.registry import ExperimentRegistry
+
         registry = ExperimentRegistry(f"{args.results_dir}/experiments.db")
         runs = registry.list_runs()
-        print(f"{'run_id':<14} {'agent':<8} {'mechanism':<12} {'seed':<6} {'status':<12} {'mean_reward'}")
+        print(
+            f"{'run_id':<14} {'agent':<8} {'mechanism':<12} {'seed':<6} {'status':<12} {'mean_reward'}"
+        )
         for r in runs:
-            print(f"  {r['run_id']:<12} {r['agent'] or '?':<8} {r['mechanism'] or '?':<12} "
-                  f"{r['seed'] or '?':<6} {r['status']:<12} {r['mean_reward'] or '-'}")
+            print(
+                f"  {r['run_id']:<12} {r['agent'] or '?':<8} {r['mechanism'] or '?':<12} "
+                f"{r['seed'] or '?':<6} {r['status']:<12} {r['mean_reward'] or '-'}"
+            )
         return
 
     if not args.batch:

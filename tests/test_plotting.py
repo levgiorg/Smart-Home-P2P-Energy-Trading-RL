@@ -1,23 +1,29 @@
 """Tests for plotting utilities — TikZ export and matplotlib quick-look plots."""
-import numpy as np
-import pandas as pd
-import pytest
+
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
+
+from src.plotting.matplotlib_plots import plot_bar_comparison, plot_convergence, plot_heatmap
+from src.plotting.palette import AGENT_COLORS, AGENT_MARKERS, COLORS
 from src.plotting.tikz_export import TikZExporter
-from src.plotting.matplotlib_plots import plot_convergence, plot_bar_comparison, plot_heatmap
-from src.plotting.palette import COLORS, AGENT_COLORS, AGENT_MARKERS
 
 
 def _make_convergence_data(n=50):
     eps = list(range(n))
     return {
-        "sac": pd.DataFrame({"episode": eps, "mean": np.random.randn(n).cumsum(), "std": np.abs(np.random.randn(n))}),
-        "td3": pd.DataFrame({"episode": eps, "mean": np.random.randn(n).cumsum(), "std": np.abs(np.random.randn(n))}),
+        "sac": pd.DataFrame(
+            {"episode": eps, "mean": np.random.randn(n).cumsum(), "std": np.abs(np.random.randn(n))}
+        ),
+        "td3": pd.DataFrame(
+            {"episode": eps, "mean": np.random.randn(n).cumsum(), "std": np.abs(np.random.randn(n))}
+        ),
     }
 
 
 # ── Palette ───────────────────────────────────────────────────────────────────
+
 
 def test_palette_has_required_colors():
     for key in ("SupBlue", "SupRed", "SupGreen", "SupOrange", "SupGray"):
@@ -33,6 +39,7 @@ def test_agent_colors_keys():
 
 
 # ── TikZExporter ──────────────────────────────────────────────────────────────
+
 
 def test_tikz_convergence_generates_tex():
     exporter = TikZExporter()
@@ -78,8 +85,16 @@ def test_tikz_heatmap(tmp_path):
 def test_tikz_significance_table(tmp_path):
     exporter = TikZExporter()
     comparisons = [
-        {"name_a": "sac", "name_b": "td3", "p_value": 0.01, "significant_0.05": True,
-         "significant_0.01": True, "effect_size": 0.7, "mean_a": 10.0, "mean_b": 7.0},
+        {
+            "name_a": "sac",
+            "name_b": "td3",
+            "p_value": 0.01,
+            "significant_0.05": True,
+            "significant_0.01": True,
+            "effect_size": 0.7,
+            "mean_a": 10.0,
+            "mean_b": 7.0,
+        },
     ]
     out = str(tmp_path / "sig.tex")
     tex = exporter.significance_table(comparisons, output_path=out)
@@ -88,6 +103,7 @@ def test_tikz_significance_table(tmp_path):
 
 
 # ── Matplotlib quick-look ─────────────────────────────────────────────────────
+
 
 def test_matplotlib_convergence_saves_png(tmp_path):
     data = _make_convergence_data()
@@ -104,7 +120,9 @@ def test_matplotlib_bar_saves_png(tmp_path):
 
 
 def test_matplotlib_heatmap_saves_png(tmp_path):
-    df = pd.DataFrame(np.random.rand(4, 4), index=[0.5, 1.0, 1.5, 2.0], columns=[0.5, 1.0, 1.5, 2.0])
+    df = pd.DataFrame(
+        np.random.rand(4, 4), index=[0.5, 1.0, 1.5, 2.0], columns=[0.5, 1.0, 1.5, 2.0]
+    )
     out = str(tmp_path / "heat.png")
     plot_heatmap(df, output_path=out)
     assert Path(out).exists()

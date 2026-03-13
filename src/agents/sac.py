@@ -24,7 +24,9 @@ class _SingleHouseSAC:
         self.batch_size = config.batch_size
         self.auto_entropy = config.auto_entropy_tuning
 
-        self.actor = StochasticActor(state_dim, action_dim, config.hidden_dims, squash=True).to(self.device)
+        self.actor = StochasticActor(state_dim, action_dim, config.hidden_dims, squash=True).to(
+            self.device
+        )
         self.critic = TwinCritic(state_dim, action_dim, config.hidden_dims).to(self.device)
         self.target_critic = copy.deepcopy(self.critic)
 
@@ -182,7 +184,7 @@ class SACAgent(BaseAgent):
         torch.save(ckpt, path)
 
     def load(self, path: str) -> None:
-        ckpt = torch.load(path, map_location=self.device)
+        ckpt = torch.load(path, map_location=self.device, weights_only=True)
         for i, agent in enumerate(self.agents):
             agent.actor.load_state_dict(ckpt[f"agent_{i}_actor"])
             agent.critic.load_state_dict(ckpt[f"agent_{i}_critic"])

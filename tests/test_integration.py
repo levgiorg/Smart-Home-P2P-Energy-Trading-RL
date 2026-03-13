@@ -10,12 +10,14 @@ Each test follows the same pattern:
 4. Run Trainer.train(10).
 5. Assert result.total_episodes == 10 and sanity-check reward types.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
 
 import pytest
-import torch
+
+from src.training.trainer import TrainingResult
 
 # ---------------------------------------------------------------------------
 # Module-level skip guard — no data directory → skip the whole module
@@ -53,7 +55,7 @@ def _agent_kwargs(env) -> dict:
     )
 
 
-def _run_smoke(agent_name: str, agent_params: dict) -> "TrainingResult":
+def _run_smoke(agent_name: str, agent_params: dict) -> TrainingResult:
     """Create env + agent, train 10 episodes, and return the result."""
     from src.agents import create_agent
     from src.config.base import EnvConfig, MarketConfig

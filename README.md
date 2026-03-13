@@ -37,20 +37,29 @@ The system consists of several key components:
    - Energy consumption patterns derived from real-world data
    - Peer-to-peer energy trading market
 
-2. **Anti-Cartel Mechanisms** (`environment/anti_cartel.py`):
+2. **Anti-Cartel Mechanisms** (`environment/anti_cartel.py` and `src/market/`):
    - **Detection Mechanism**: Uses statistical methods to identify suspicious price coordination
    - **Ceiling Mechanism**: Implements a dynamic price ceiling based on grid prices
+   - **Adaptive Mechanism**: Rolling-window dynamic thresholds (`src/market/adaptive.py`)
 
-3. **DDPG Agent** (`agents/ddpg_agent.py`): Learns optimal policies for:
-   - HVAC energy consumption
-   - Battery charging/discharging decisions
-   - Setting selling prices in the P2P market
+3. **RL Agents** (`src/agents/`): Multiple algorithms available:
+   - **DDPG** (primary): Deterministic actor-critic with Ornstein-Uhlenbeck exploration
+   - **SAC**: Soft Actor-Critic with entropy regularization
+   - **TD3**: Twin-Delayed DDPG with target policy smoothing
+   - **PPO**: Proximal Policy Optimization (on-policy)
+   - **DQN**: Deep Q-Network (discrete actions)
 
-4. **Analysis Tools** (`energy_analysis/`): Comprehensive framework for evaluating:
-   - Energy efficiency metrics
-   - Price competitiveness analysis
-   - Trading profitability
-   - Temperature control performance
+4. **Training Infrastructure** (`src/training/`, `src/experiment/`):
+   - Agent-agnostic `Trainer` class
+   - `ExperimentRegistry` (SQLite) for run tracking
+   - `RunVersioner` for reproducible run directories with git snapshots
+   - `BatchOrchestrator` for parallel multi-GPU experiment grids
+
+5. **Analysis Tools** (`src/evaluation/`, `src/plotting/`, `analysis/`):
+   - `Evaluator` with multi-seed aggregation and stress-scenario testing
+   - `ParameterSweep` for 1D/2D sensitivity analysis
+   - Matplotlib plots (convergence, bar comparison, heatmap)
+   - TikZ/pgfplots export for publication figures
 
 ## Installation
 
@@ -84,19 +93,38 @@ docker run -it --gpus all smart-home-cartel python main.py
 ### Running Experiments
 
 ```bash
-# Run the main experiment suite with default settings
-python main.py
+# Single-run training
+python train.py --agent ddpg --mechanism detection --seed 42 --episodes 1000
 
-# Run specific experiment configurations
-python main.py --experiment reward_stability
-python main.py --mechanism detection --num_houses 10
+# Train with a specific algorithm and mechanism
+python train.py --agent sac --mechanism ceiling --episodes 2000
+
+# Load config from YAML
+python train.py --config experiments/sac_adaptive.yaml
+
+# Parallel batch training (cartesian product over agent × mechanism × seed)
+python batch_train.py --batch experiments/full_comparison.yaml --gpus 0,1 --max-concurrent 4
+
+# Check status of all runs
+python batch_train.py --status
+
+# Resume failed runs
+python batch_train.py --batch experiments/full_comparison.yaml --resume-failed
+```
+
+### Evaluating Trained Agents
+
+```bash
+# Evaluate a checkpoint
+python evaluate.py --checkpoint results/ddpg_detection_42/model_best.pt --scenarios all
 ```
 
 ### Generating Visualizations
 
 ```bash
-# Run energy analysis visualizations
-python energy_analysis/main.py
+# Standalone analysis scripts
+python analysis/analyze_main.py
+python analysis/cartel_analyzer.py
 ```
 
 ## Experimental Configuration
@@ -193,6 +221,19 @@ Anti-cartel mechanisms monitor and influence the P2P market to prevent price man
 - Pandas >= 1.3.0
 - Matplotlib >= 3.4.0
 - Seaborn >= 0.11.0
+- Pydantic >= 2.0.0
+- PyYAML >= 6.0
+
+## Documentation
+
+Detailed code maps are available in [`docs/CODEMAPS/`](docs/CODEMAPS/):
+
+- [`INDEX.md`](docs/CODEMAPS/INDEX.md) — Architecture overview and directory map
+- [`environment.md`](docs/CODEMAPS/environment.md) — RL environment, physics, anti-cartel mechanisms
+- [`models.md`](docs/CODEMAPS/models.md) — Neural networks and RL agent architectures
+- [`training.md`](docs/CODEMAPS/training.md) — Training pipeline and experiment management
+- [`utilities.md`](docs/CODEMAPS/utilities.md) — Buffers, configs, market regulators
+- [`analysis.md`](docs/CODEMAPS/analysis.md) — Evaluation, plotting, sensitivity analysis
 
 ## Citation
 

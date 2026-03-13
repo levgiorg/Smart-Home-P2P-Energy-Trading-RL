@@ -6,6 +6,7 @@ Reads a YAML experiment matrix, expands to individual run configs,
 and launches each as a separate subprocess with GPU assignment.
 """
 
+import logging
 import os
 import subprocess
 import sys
@@ -16,6 +17,8 @@ from pathlib import Path
 import yaml
 
 from .registry import ExperimentRegistry
+
+logger = logging.getLogger(__name__)
 
 
 class BatchOrchestrator:
@@ -81,7 +84,7 @@ class BatchOrchestrator:
 
             proc = subprocess.Popen(args, env=env, cwd=str(Path.cwd()))
             active.append(proc)
-            print(f"[BatchOrchestrator] Launched run {i + 1}/{len(runs)}: {run_params}")
+            logger.info("Launched run %d/%d: %s", i + 1, len(runs), run_params)
 
         # Wait for remaining
         for p in active:
@@ -92,7 +95,7 @@ class BatchOrchestrator:
 
     def resume_failed(self) -> None:
         failed = self.registry.list_runs(status="failed")
-        print(f"[BatchOrchestrator] {len(failed)} failed runs to resume.")
+        logger.info("%d failed runs to resume.", len(failed))
         for run in failed:
             config_path = None
             if run.get("results_dir"):

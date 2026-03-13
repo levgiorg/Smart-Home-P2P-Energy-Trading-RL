@@ -36,7 +36,9 @@ class _SingleHouseDDPG:
         self.target_critic = copy.deepcopy(self.critic)
 
         self.actor_opt = optim.Adam(self.actor.parameters(), lr=config.lr_actor)
-        self.critic_opt = optim.Adam(self.critic.parameters(), lr=config.lr_critic, weight_decay=1e-2)
+        self.critic_opt = optim.Adam(
+            self.critic.parameters(), lr=config.lr_critic, weight_decay=1e-2
+        )
 
         self.memory = ReplayBuffer(config.memory_size, device=self.device)
         # Noise only on HVAC + battery actions (2 dims); price handled separately
@@ -165,12 +167,16 @@ class DDPGAgent(BaseAgent):
         torch.save(checkpoint, path)
 
     def load(self, path: str) -> None:
-        ckpt = torch.load(path, map_location=self.device)
+        ckpt = torch.load(path, map_location=self.device, weights_only=True)
         for i, agent in enumerate(self.agents):
             agent.actor.load_state_dict(ckpt[f"agent_{i}_actor"])
             agent.critic.load_state_dict(ckpt[f"agent_{i}_critic"])
-            agent.actor.load_state_dict(ckpt.get(f"agent_{i}_actor_opt", agent.actor_opt.state_dict()))
-            agent.critic.load_state_dict(ckpt.get(f"agent_{i}_critic_opt", agent.critic_opt.state_dict()))
+            agent.actor.load_state_dict(
+                ckpt.get(f"agent_{i}_actor_opt", agent.actor_opt.state_dict())
+            )
+            agent.critic.load_state_dict(
+                ckpt.get(f"agent_{i}_critic_opt", agent.critic_opt.state_dict())
+            )
 
     @property
     def is_on_policy(self) -> bool:

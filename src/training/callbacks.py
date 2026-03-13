@@ -6,7 +6,7 @@ import logging
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .trainer import TrainingResult
+    pass
 
 logger = logging.getLogger(__name__)
 

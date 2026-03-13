@@ -27,15 +27,21 @@ class _SingleHousePPO:
         self.max_grad_norm = config.max_grad_norm
         self.rollout_length = config.rollout_length
 
-        self.actor = StochasticActor(state_dim, action_dim, config.hidden_dims, squash=False).to(self.device)
+        self.actor = StochasticActor(state_dim, action_dim, config.hidden_dims, squash=False).to(
+            self.device
+        )
         self.value = ValueNetwork(state_dim, config.hidden_dims).to(self.device)
         self.opt = optim.Adam(
             list(self.actor.parameters()) + list(self.value.parameters()), lr=config.lr
         )
 
-        self.buffer = RolloutBuffer(config.rollout_length, state_dim, action_dim, device=self.device)
+        self.buffer = RolloutBuffer(
+            config.rollout_length, state_dim, action_dim, device=self.device
+        )
 
-    def select_action(self, state: torch.Tensor, deterministic: bool = False) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def select_action(
+        self, state: torch.Tensor, deterministic: bool = False
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         state = state.to(self.device).unsqueeze(0)
         with torch.no_grad():
             if deterministic:
@@ -87,7 +93,9 @@ class _SingleHousePPO:
                 value_loss = F.mse_loss(value_pred, ret_b)
 
                 entropy_loss = -entropy.mean()
-                total_loss = policy_loss + self.value_coef * value_loss + self.entropy_coef * entropy_loss
+                total_loss = (
+                    policy_loss + self.value_coef * value_loss + self.entropy_coef * entropy_loss
+                )
 
                 self.opt.zero_grad()
                 total_loss.backward()
@@ -179,7 +187,7 @@ class PPOAgent(BaseAgent):
         torch.save(ckpt, path)
 
     def load(self, path: str) -> None:
-        ckpt = torch.load(path, map_location=self.device)
+        ckpt = torch.load(path, map_location=self.device, weights_only=True)
         for i, agent in enumerate(self.agents):
             agent.actor.load_state_dict(ckpt[f"agent_{i}_actor"])
             agent.value.load_state_dict(ckpt[f"agent_{i}_value"])

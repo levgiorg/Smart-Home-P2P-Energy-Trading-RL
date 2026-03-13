@@ -1,1 +1,1 @@
-from .hyperparameters import Config
+from .hyperparameters import Config as Config

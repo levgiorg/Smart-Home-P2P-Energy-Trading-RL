@@ -1,0 +1,13 @@
+# Adaptive vs static: all agents × {detection, adaptive} × 5 seeds
+matrix:
+  agent: [ddpg, sac, td3, ppo]
+  mechanism: [detection, adaptive]
+  seed: [0, 1, 2, 3, 4]
+
+shared:
+  episodes: 1000
+
+gpu:
+  strategy: round_robin
+  devices: [0, 1]
+  max_concurrent: 4

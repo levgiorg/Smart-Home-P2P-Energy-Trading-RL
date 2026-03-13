@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 LOG_STD_MIN = -20
 LOG_STD_MAX = 2
@@ -21,7 +20,9 @@ def _mlp(input_dim: int, hidden_dims: tuple[int, ...], output_dim: int) -> nn.Se
 class DeterministicActor(nn.Module):
     """Tanh-bounded deterministic actor for DDPG and TD3."""
 
-    def __init__(self, state_dim: int, action_dim: int, hidden_dims: tuple[int, int] = (256, 256)) -> None:
+    def __init__(
+        self, state_dim: int, action_dim: int, hidden_dims: tuple[int, int] = (256, 256)
+    ) -> None:
         super().__init__()
         self.net = _mlp(state_dim, hidden_dims, action_dim)
         for layer in self.net:
@@ -87,7 +88,9 @@ class StochasticActor(nn.Module):
 
         return action, log_prob.sum(-1, keepdim=True)
 
-    def evaluate(self, state: torch.Tensor, action: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def evaluate(
+        self, state: torch.Tensor, action: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """Evaluate log_prob and entropy for given actions (used in PPO update)."""
         mean, log_std = self.forward(state)
         std = log_std.exp()

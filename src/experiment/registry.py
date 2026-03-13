@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-
 _CREATE_TABLE = """
 CREATE TABLE IF NOT EXISTS runs (
     run_id TEXT PRIMARY KEY,
@@ -32,6 +31,11 @@ CREATE TABLE IF NOT EXISTS runs (
     results_dir TEXT
 )
 """
+
+
+_ALLOWED_SORT_COLUMNS: frozenset[str] = frozenset(
+    {"mean_reward", "best_reward", "total_episodes", "training_time_sec", "start_time"}
+)
 
 
 class ExperimentRegistry:
@@ -65,7 +69,9 @@ class ExperimentRegistry:
                     getattr(getattr(config, "market", None), "mechanism_type", None),
                     getattr(config, "seed", None),
                     now,
-                    config.model_dump_json() if hasattr(config, "model_dump_json") else json.dumps({}),
+                    config.model_dump_json()
+                    if hasattr(config, "model_dump_json")
+                    else json.dumps({}),
                     git.get("commit"),
                     git.get("branch"),
                     int(git.get("dirty", False)),
@@ -127,10 +133,14 @@ class ExperimentRegistry:
         return [dict(r) for r in rows]
 
     def best_run(self, agent: str, metric: str = "mean_reward") -> dict | None:
+        if metric not in _ALLOWED_SORT_COLUMNS:
+            raise ValueError(
+                f"Invalid sort column: {metric!r}. Allowed: {sorted(_ALLOWED_SORT_COLUMNS)}"
+            )
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             row = conn.execute(
-                f"SELECT * FROM runs WHERE agent=? AND status='completed' ORDER BY {metric} DESC LIMIT 1",
+                f"SELECT * FROM runs WHERE agent=? AND status='completed' ORDER BY {metric} DESC LIMIT 1",  # noqa: S608
                 (agent,),
             ).fetchone()
         return dict(row) if row else None

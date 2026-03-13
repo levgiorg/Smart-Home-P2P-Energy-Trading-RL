@@ -43,7 +43,14 @@ def plot_convergence(
         std = df["std"].to_numpy() if "std" in df.columns else np.zeros_like(mean)
 
         ax.fill_between(ep, mean - std, mean + std, color=color, alpha=0.15)
-        ax.plot(ep, mean, color=color, marker=marker, markevery=max(1, len(ep) // 20), label=agent.upper())
+        ax.plot(
+            ep,
+            mean,
+            color=color,
+            marker=marker,
+            markevery=max(1, len(ep) // 20),
+            label=agent.upper(),
+        )
 
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)

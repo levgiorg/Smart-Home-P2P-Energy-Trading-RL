@@ -23,9 +23,15 @@ class ReplayBuffer:
         self._dones: torch.Tensor
 
     def _init_buffers(self, state_dim: int, action_dim: int) -> None:
-        self._states = torch.zeros((self.capacity, state_dim), dtype=torch.float32, device=self.device)
-        self._actions = torch.zeros((self.capacity, action_dim), dtype=torch.float32, device=self.device)
-        self._next_states = torch.zeros((self.capacity, state_dim), dtype=torch.float32, device=self.device)
+        self._states = torch.zeros(
+            (self.capacity, state_dim), dtype=torch.float32, device=self.device
+        )
+        self._actions = torch.zeros(
+            (self.capacity, action_dim), dtype=torch.float32, device=self.device
+        )
+        self._next_states = torch.zeros(
+            (self.capacity, state_dim), dtype=torch.float32, device=self.device
+        )
         self._rewards = torch.zeros((self.capacity, 1), dtype=torch.float32, device=self.device)
         self._dones = torch.zeros((self.capacity, 1), dtype=torch.float32, device=self.device)
         self._initialized = True

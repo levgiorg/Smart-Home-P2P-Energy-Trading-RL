@@ -1,6 +1,6 @@
+from .adaptive import AdaptiveRegulator
 from .base import MarketRegulator
 from .static import StaticRegulator
-from .adaptive import AdaptiveRegulator
 
 
 def create_regulator(config) -> MarketRegulator:

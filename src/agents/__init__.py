@@ -1,9 +1,9 @@
 from .base import BaseAgent
 from .ddpg import DDPGAgent
 from .dqn import DQNAgent
+from .ppo import PPOAgent
 from .sac import SACAgent
 from .td3 import TD3Agent
-from .ppo import PPOAgent
 
 AGENT_REGISTRY: dict[str, type[BaseAgent]] = {
     "ddpg": DDPGAgent,

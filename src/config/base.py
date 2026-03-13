@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -30,13 +30,13 @@ class EnvConfig(BaseModel):
     weather_data_path: str = "data/ninja_weather_55.6838_12.5354_uncorrected.csv"
     price_data_path: str = "data/2014_DK2_spot_prices.csv"
     num_hours: int = 24
-    random_seed: Optional[int] = 42
+    random_seed: int | None = 42
 
     model_config = {"frozen": True}
 
 
 class MarketConfig(BaseModel):
-    mechanism_type: Optional[Literal["detection", "ceiling", "adaptive"]] = "detection"
+    mechanism_type: Literal["detection", "ceiling", "adaptive"] | None = "detection"
     monitoring_window: int = 100
     penalty_factor: float = 1.5
     markup_limit: float = 0.2

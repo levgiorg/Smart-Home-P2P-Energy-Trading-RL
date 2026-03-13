@@ -1,9 +1,8 @@
 """Smoke tests: construct each agent, forward pass, 10-transition update cycle."""
-import pytest
-import torch
-import numpy as np
 
-from src.config.agent_configs import DDPGConfig, SACConfig, TD3Config, PPOConfig, DQNConfig
+import torch
+
+from src.config.agent_configs import DDPGConfig, PPOConfig, SACConfig, TD3Config
 
 NUM_HOUSES = 2
 SDPH = 17
@@ -49,6 +48,7 @@ def _run_smoke(agent):
 
 def test_ddpg_smoke():
     from src.agents.ddpg import DDPGAgent
+
     cfg = DDPGConfig(batch_size=4, memory_size=50)
     agent = DDPGAgent(config=cfg, **KWARGS)
     _run_smoke(agent)
@@ -57,6 +57,7 @@ def test_ddpg_smoke():
 
 def test_sac_smoke():
     from src.agents.sac import SACAgent
+
     cfg = SACConfig(batch_size=4, memory_size=50)
     agent = SACAgent(config=cfg, **KWARGS)
     _run_smoke(agent)
@@ -65,6 +66,7 @@ def test_sac_smoke():
 
 def test_td3_smoke():
     from src.agents.td3 import TD3Agent
+
     cfg = TD3Config(batch_size=4, memory_size=50)
     agent = TD3Agent(config=cfg, **KWARGS)
     _run_smoke(agent)
@@ -73,6 +75,7 @@ def test_td3_smoke():
 
 def test_ppo_smoke():
     from src.agents.ppo import PPOAgent
+
     cfg = PPOConfig(rollout_length=8, batch_size=4, epochs_per_update=1)
     agent = PPOAgent(config=cfg, **KWARGS)
     s, a, ns, r = _dummy_transition()
@@ -87,6 +90,7 @@ def test_ppo_smoke():
 
 def test_agent_save_load(tmp_path):
     from src.agents.sac import SACAgent
+
     cfg = SACConfig(batch_size=4, memory_size=50)
     agent = SACAgent(config=cfg, **KWARGS)
     path = str(tmp_path / "model.pt")

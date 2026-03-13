@@ -4,12 +4,12 @@ Usage:
     python train.py --agent sac --mechanism detection --seed 42 --episodes 1000
     python train.py --config experiments/sac_adaptive.yaml
 """
+
 from __future__ import annotations
 
 import argparse
 import logging
 import time
-from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -18,7 +18,9 @@ logger = logging.getLogger(__name__)
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Train an RL agent for P2P energy trading.")
     p.add_argument("--agent", default="ddpg", choices=["ddpg", "sac", "td3", "ppo", "dqn"])
-    p.add_argument("--mechanism", default="detection", choices=["detection", "ceiling", "adaptive", "none"])
+    p.add_argument(
+        "--mechanism", default="detection", choices=["detection", "ceiling", "adaptive", "none"]
+    )
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--episodes", type=int, default=1000)
     p.add_argument("--device", default="cpu")
@@ -30,8 +32,8 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
-    from src.config.experiment import ExperimentConfig
     from src.config.base import MarketConfig
+    from src.config.experiment import ExperimentConfig
     from src.utilities.seeding import set_all_seeds
 
     if args.config:
@@ -49,10 +51,10 @@ def main() -> None:
 
     set_all_seeds(config.seed)
 
+    from src.agents import create_agent
+    from src.environment.energy_env import EnergyEnv
     from src.experiment.registry import ExperimentRegistry
     from src.experiment.versioning import RunVersioner
-    from src.environment.energy_env import EnergyEnv
-    from src.agents import create_agent
 
     versioner = RunVersioner(config.results_dir)
     registry = ExperimentRegistry(f"{config.results_dir}/experiments.db")
@@ -93,7 +95,9 @@ def main() -> None:
         }
         versioner.save_summary(run_dir, final_metrics)
         registry.update_status(run_id, "completed", final_metrics, str(run_dir))
-        logger.info("Training complete. mean_reward=%.2f  best=%.2f", result.mean_reward, result.best_reward)
+        logger.info(
+            "Training complete. mean_reward=%.2f  best=%.2f", result.mean_reward, result.best_reward
+        )
     except Exception:
         registry.update_status(run_id, "failed")
         raise

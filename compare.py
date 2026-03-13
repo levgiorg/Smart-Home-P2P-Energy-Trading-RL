@@ -4,6 +4,7 @@ Usage:
     python compare.py --agents ddpg,sac,td3,ppo --seeds 5 --mechanism detection --episodes 1000
     python compare.py --results-dir results/ --agents sac,td3
 """
+
 from __future__ import annotations
 
 import argparse
@@ -29,14 +30,16 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
-def _train_agent(agent_name: str, seed: int, mechanism: str, episodes: int) -> tuple[list[float], float]:
+def _train_agent(
+    agent_name: str, seed: int, mechanism: str, episodes: int
+) -> tuple[list[float], float]:
     """Train a single agent and return episode rewards + final mean."""
-    from src.config.experiment import ExperimentConfig
-    from src.config.base import MarketConfig
-    from src.utilities.seeding import set_all_seeds
-    from src.environment.energy_env import EnergyEnv
     from src.agents import create_agent
+    from src.config.base import MarketConfig
+    from src.config.experiment import ExperimentConfig
+    from src.environment.energy_env import EnergyEnv
     from src.training.trainer import Trainer
+    from src.utilities.seeding import set_all_seeds
 
     set_all_seeds(seed)
     config = ExperimentConfig(
@@ -83,11 +86,13 @@ def main() -> None:
     for agent, curves in all_curves.items():
         min_len = min(len(c) for c in curves)
         arr = np.array([c[:min_len] for c in curves])
-        convergence_data[agent] = pd.DataFrame({
-            "episode": np.arange(min_len),
-            "mean": arr.mean(axis=0),
-            "std": arr.std(axis=0),
-        })
+        convergence_data[agent] = pd.DataFrame(
+            {
+                "episode": np.arange(min_len),
+                "mean": arr.mean(axis=0),
+                "std": arr.std(axis=0),
+            }
+        )
 
     # Save raw data
     raw: dict[str, list[float]] = {}
@@ -98,12 +103,13 @@ def main() -> None:
 
     # Significance tests
     from src.evaluation.statistics import pairwise_comparisons
+
     comparisons = pairwise_comparisons(all_rewards, paired=False)
     with open(output_dir / "significance.json", "w") as f:
         json.dump(comparisons, f, indent=2)
 
     # Publication plots
-    from src.plotting.matplotlib_plots import plot_convergence, plot_bar_comparison
+    from src.plotting.matplotlib_plots import plot_bar_comparison, plot_convergence
     from src.plotting.tikz_export import TikZExporter
 
     plot_convergence(convergence_data, output_path=str(output_dir / "convergence.png"))
@@ -111,23 +117,34 @@ def main() -> None:
 
     final_means = {a: {"final_reward": float(np.mean(all_rewards[a]))} for a in agents}
     final_stds = {a: {"final_reward": float(np.std(all_rewards[a]))} for a in agents}
-    plot_bar_comparison(final_means, errors=final_stds, ylabel="Final Reward",
-                        output_path=str(output_dir / "final_reward_bars.png"))
+    plot_bar_comparison(
+        final_means,
+        errors=final_stds,
+        ylabel="Final Reward",
+        output_path=str(output_dir / "final_reward_bars.png"),
+    )
     logger.info("Saved final_reward_bars.png")
 
     exporter = TikZExporter()
     exporter.convergence_plot(
-        convergence_data, caption="Training convergence comparison.",
-        label="convergence", output_path=str(output_dir / "convergence.tex")
+        convergence_data,
+        caption="Training convergence comparison.",
+        label="convergence",
+        output_path=str(output_dir / "convergence.tex"),
     )
     exporter.bar_chart(
-        final_means, errors=final_stds, ylabel="Final Reward",
-        caption="Final reward comparison.", label="final_reward",
-        output_path=str(output_dir / "final_reward_bars.tex")
+        final_means,
+        errors=final_stds,
+        ylabel="Final Reward",
+        caption="Final reward comparison.",
+        label="final_reward",
+        output_path=str(output_dir / "final_reward_bars.tex"),
     )
     exporter.significance_table(
-        comparisons, caption="Pairwise significance tests (Mann-Whitney U).",
-        label="significance", output_path=str(output_dir / "significance_table.tex")
+        comparisons,
+        caption="Pairwise significance tests (Mann-Whitney U).",
+        label="significance",
+        output_path=str(output_dir / "significance_table.tex"),
     )
 
     # Summary table

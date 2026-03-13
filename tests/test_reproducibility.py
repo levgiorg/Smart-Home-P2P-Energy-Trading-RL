@@ -1,12 +1,11 @@
 """Verify that same seed + config produces identical agent outputs."""
+
 import torch
-import pytest
 
-from src.utilities.seeding import set_all_seeds
-from src.config.agent_configs import SACConfig, DDPGConfig
-from src.agents.sac import SACAgent
 from src.agents.ddpg import DDPGAgent
-
+from src.agents.sac import SACAgent
+from src.config.agent_configs import DDPGConfig, SACConfig
+from src.utilities.seeding import set_all_seeds
 
 NUM_HOUSES = 2
 SDPH, ADPH = 17, 3

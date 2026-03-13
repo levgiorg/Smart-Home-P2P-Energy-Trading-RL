@@ -161,7 +161,7 @@ class TD3Agent(BaseAgent):
         torch.save(ckpt, path)
 
     def load(self, path: str) -> None:
-        ckpt = torch.load(path, map_location=self.device)
+        ckpt = torch.load(path, map_location=self.device, weights_only=True)
         for i, agent in enumerate(self.agents):
             agent.actor.load_state_dict(ckpt[f"agent_{i}_actor"])
             agent.critic.load_state_dict(ckpt[f"agent_{i}_critic"])

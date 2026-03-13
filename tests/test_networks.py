@@ -1,11 +1,10 @@
 """Tests for shared network architectures."""
+
 import torch
-import pytest
 
 from src.networks.actors import DeterministicActor, StochasticActor
 from src.networks.critics import Critic, TwinCritic
 from src.networks.value import ValueNetwork
-
 
 STATE_DIM = 17
 ACTION_DIM = 3

@@ -1,8 +1,12 @@
 """Tests for significance testing utilities."""
-import numpy as np
-import pytest
 
-from src.evaluation.statistics import wilcoxon_comparison, mann_whitney_comparison, pairwise_comparisons
+import numpy as np
+
+from src.evaluation.statistics import (
+    mann_whitney_comparison,
+    pairwise_comparisons,
+    wilcoxon_comparison,
+)
 
 
 def test_wilcoxon_detects_difference():

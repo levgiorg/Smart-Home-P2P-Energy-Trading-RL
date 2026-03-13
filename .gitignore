@@ -1,29 +1,40 @@
-pytorch.yaml
-ml-outputs/
-test runs/
-cartel_comparison.png
-ml-outputs2/
-ml-outputs3/
-*.pyc
-.venv/
-models/
-.dockerignore
-Dockerfile
+# Python
 __pycache__/
-.github/
-*.html
-*.pdf
-pyrefly.toml
-*.md
+*.pyc
+*.pyo
+*.egg-info/
+
+# Virtual environments
+.venv/
+p2p_venv/
+
+# IDE / tooling
 .claude/
 .claudeignore
-dqn_runs/*
-runs/*
-*.yaml
-p2p_venv
-old_ddpg_runs/
-ddpg_runs/
+pyrefly.toml
+
+# Training outputs & artifacts
+results/
+runs/
 dqn_runs/
-energy_analysis/ieee_*
-*.sh
+ddpg_runs/
+old_ddpg_runs/
+ml-outputs/
+ml-outputs2/
+ml-outputs3/
 energy_analysis/
+
+# Logs
+*.log
+
+# Generated files
+models/
+*.html
+*.pdf
+cartel_comparison.png
+pytorch.yaml
+
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.vscode/

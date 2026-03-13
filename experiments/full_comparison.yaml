@@ -1,0 +1,26 @@
+# Full experiment matrix: 4 agents × 3 mechanisms × 5 seeds = 60 runs
+matrix:
+  agent: [ddpg, sac, td3, ppo]
+  mechanism: [detection, ceiling, adaptive]
+  seed: [0, 1, 2, 3, 4]
+
+shared:
+  episodes: 1000
+  env:
+    num_houses: 10
+
+overrides:
+  ddpg:
+    lr_actor: 1.0e-6
+    lr_critic: 1.0e-5
+  sac:
+    batch_size: 256
+  td3:
+    batch_size: 256
+  ppo:
+    rollout_length: 2048
+
+gpu:
+  strategy: round_robin
+  devices: [0, 1]
+  max_concurrent: 4

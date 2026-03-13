@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 
-from .base import EnvConfig, MarketConfig, RewardConfig
 from .agent_configs import DDPGConfig, DQNConfig, PPOConfig, SACConfig, TD3Config
+from .base import EnvConfig, MarketConfig, RewardConfig
 
-AgentConfig = Union[DDPGConfig, SACConfig, TD3Config, PPOConfig, DQNConfig]
+AgentConfig = DDPGConfig | SACConfig | TD3Config | PPOConfig | DQNConfig
 
 _AGENT_CONFIG_MAP: dict[str, type] = {
     "ddpg": DDPGConfig,
@@ -29,7 +29,7 @@ class ExperimentConfig(BaseModel):
     reward: RewardConfig = Field(default_factory=RewardConfig)
     agent_params: dict[str, Any] = Field(default_factory=dict)
     results_dir: str = "results"
-    run_name: Optional[str] = None
+    run_name: str | None = None
 
     model_config = {"frozen": False}
 
@@ -40,7 +40,7 @@ class ExperimentConfig(BaseModel):
         return cls(**params)
 
     @classmethod
-    def from_yaml(cls, path: str) -> "ExperimentConfig":
+    def from_yaml(cls, path: str) -> ExperimentConfig:
         with open(path) as f:
             data = yaml.safe_load(f)
         return cls(**data)

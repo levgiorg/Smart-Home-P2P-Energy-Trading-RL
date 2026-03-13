@@ -3,11 +3,14 @@ from __future__ import annotations
 """Run directory management, config snapshots, git info, and environment capture."""
 
 import json
+import logging
 import platform
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 class RunVersioner:
@@ -34,7 +37,8 @@ class RunVersioner:
 
             with open(run_dir / "config.yaml", "w") as f:
                 yaml.dump(json.loads(config.model_dump_json()), f, default_flow_style=False)
-        except Exception:
+        except Exception as exc:
+            logger.warning("Failed to write config.yaml, falling back to empty JSON: %s", exc)
             with open(run_dir / "config.json", "w") as f:
                 json.dump({}, f)
 
@@ -46,7 +50,8 @@ class RunVersioner:
             info["branch"] = _git("rev-parse", "--abbrev-ref", "HEAD")
             info["dirty"] = bool(_git("status", "--porcelain"))
             info["diff_stat"] = _git("diff", "--stat")
-        except Exception:
+        except Exception as exc:
+            logger.warning("Failed to capture git info: %s", exc)
             info = {"error": "git unavailable"}
         with open(run_dir / "git_info.json", "w") as f:
             json.dump(info, f, indent=2)
@@ -71,8 +76,8 @@ class RunVersioner:
         try:
             pip_out = subprocess.check_output(["pip", "freeze"], text=True)
             (run_dir / "pip_freeze.txt").write_text(pip_out)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Failed to capture pip freeze: %s", exc)
 
         return info
 

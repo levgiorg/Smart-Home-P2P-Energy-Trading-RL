@@ -6,7 +6,13 @@ import torch
 class RolloutBuffer:
     """On-policy rollout buffer with GAE advantage estimation for PPO."""
 
-    def __init__(self, rollout_length: int, state_dim: int, action_dim: int, device: str | torch.device = "cpu") -> None:
+    def __init__(
+        self,
+        rollout_length: int,
+        state_dim: int,
+        action_dim: int,
+        device: str | torch.device = "cpu",
+    ) -> None:
         self.rollout_length = rollout_length
         self.device = torch.device(device)
         self._pos = 0
