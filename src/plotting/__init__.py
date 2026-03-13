@@ -1,0 +1,3 @@
+from .palette import COLORS, AGENT_COLORS, AGENT_MARKERS
+
+__all__ = ["COLORS", "AGENT_COLORS", "AGENT_MARKERS"]
