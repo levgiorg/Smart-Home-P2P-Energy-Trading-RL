@@ -29,6 +29,9 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --tb=short"
+markers = [
+    "integration: marks tests that require external data files or long runtimes",
+]
 
 [tool.ruff]
 line-length = 100
